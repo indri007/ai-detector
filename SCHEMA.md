@@ -1,12 +1,15 @@
 # DATABASE TECHNICAL SCHEMA SPECIFICATION (`SCHEMA.md`)
 **Project:** Academic Writing Intelligence Platform  
-**Target RDBMS:** PostgreSQL 14+ (Compatible with local `psql 14.20`)  
+**Version:** 0.2.0-beta (Synchronized with ERD v0.2.0 & Live Deployment)  
+**Target RDBMS:** PostgreSQL 14+ (Compatible with local `psql 14.20` & Cloud SQL)  
 **Status:** Approved for Implementation  
-**Architect:** Database Architect
+**Architect:** Database Architect & Principal Engineer  
+**Live URL:** [https://ai-detector-best.streamlit.app/](https://ai-detector-best.streamlit.app/)
 
 ---
 
 ## 1. Schema Extensions & Migrations
+
 ```sql
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
@@ -15,7 +18,8 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 Sequential migration files:
 * `migrations/0001_initial_core_schema.sql` (Users, Documents, AnalysisReports, Findings, Sources)
 * `migrations/0002_academic_management_schema.sql` (Institutions, Classes, Enrollments, Assignments, Submissions, Feedback, AuditLogs)
-* `migrations/0003_seed_open_access_corpus.sql` (Seed verified literature)
+* `migrations/0003_seed_open_access_corpus.sql` (Seed 5 verified open-access baseline papers)
+* `migrations/0004_copilot_paraphrase_citations.sql` (CopilotExecutions, ParaphraseVariants, CitationReferences, Multi-Client columns)
 
 ---
 
@@ -90,6 +94,7 @@ CREATE TABLE documents (
     content TEXT NOT NULL DEFAULT '',
     word_count INTEGER NOT NULL DEFAULT 0 CHECK (word_count >= 0),
     language VARCHAR(10) NOT NULL DEFAULT 'en-US' CHECK (language IN ('en-US', 'en-GB', 'id-ID')),
+    client_source VARCHAR(30) NOT NULL DEFAULT 'streamlit_cloud' CHECK (client_source IN ('streamlit_cloud', 'web_studio', 'word_addin')),
     content_hash VARCHAR(64),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -133,7 +138,8 @@ CREATE TABLE analysis_reports (
     document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
     submission_id UUID REFERENCES submissions(id) ON DELETE CASCADE,
     analysis_type VARCHAR(50) NOT NULL CHECK (analysis_type IN ('grammar', 'similarity', 'comprehensive')),
-    engine_version VARCHAR(50) NOT NULL DEFAULT '1.0.0',
+    client_type VARCHAR(30) NOT NULL DEFAULT 'streamlit_cloud' CHECK (client_type IN ('streamlit_cloud', 'web_studio', 'word_addin', 'api')),
+    engine_version VARCHAR(50) NOT NULL DEFAULT '0.2.0',
     similarity_score NUMERIC(5, 2) CHECK (similarity_score BETWEEN 0.00 AND 100.00),
     status VARCHAR(30) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -168,7 +174,58 @@ CREATE TABLE similarity_matches (
 );
 ```
 
-### 2.12 Table: `feedback` (Instructor Annotations)
+### 2.12 Table: `copilot_executions` (Academic AI Copilot Logs & History)
+```sql
+CREATE TABLE copilot_executions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
+    skill_name VARCHAR(50) NOT NULL CHECK (skill_name IN (
+        'grammar', 'clarity', 'rewriter', 'tone', 'paraphrase',
+        'chat', 'imrad_summary', 'translate', 'doc_qa',
+        'citation_verify', 'research_gap', 'journal_formatter'
+    )),
+    model_used VARCHAR(50) NOT NULL DEFAULT 'gemini-2.5-flash',
+    input_context TEXT NOT NULL,
+    generated_response TEXT NOT NULL,
+    prompt_tokens INTEGER NOT NULL DEFAULT 0 CHECK (prompt_tokens >= 0),
+    completion_tokens INTEGER NOT NULL DEFAULT 0 CHECK (completion_tokens >= 0),
+    client_type VARCHAR(30) NOT NULL DEFAULT 'streamlit_cloud',
+    executed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 2.13 Table: `paraphrase_variants` (Academic Rewriter Variations)
+```sql
+CREATE TABLE paraphrase_variants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
+    mode VARCHAR(30) NOT NULL CHECK (mode IN ('academic_formal', 'concise')),
+    original_text TEXT NOT NULL,
+    rewritten_text TEXT NOT NULL,
+    scientific_rationale TEXT,
+    citations_preserved BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 2.14 Table: `citation_references` (Official Crossref Literature Metadata)
+```sql
+CREATE TABLE citation_references (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id UUID REFERENCES documents(id) ON DELETE CASCADE,
+    doi VARCHAR(255) UNIQUE,
+    title VARCHAR(500) NOT NULL,
+    authors VARCHAR(500) NOT NULL,
+    publication_year INTEGER CHECK (publication_year BETWEEN 1800 AND 2100),
+    journal_name VARCHAR(300),
+    apa7_citation TEXT NOT NULL,
+    ieee_citation TEXT NOT NULL,
+    verified_crossref BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 2.15 Table: `feedback` (Instructor Annotations)
 ```sql
 CREATE TABLE feedback (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -181,7 +238,7 @@ CREATE TABLE feedback (
 );
 ```
 
-### 2.13 Table: `audit_logs` (Security & Academic Integrity)
+### 2.16 Table: `audit_logs` (Security & Academic Integrity)
 ```sql
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -189,6 +246,7 @@ CREATE TABLE audit_logs (
     action VARCHAR(50) NOT NULL,
     resource_type VARCHAR(50) NOT NULL,
     resource_id UUID NOT NULL,
+    client_type VARCHAR(30) NOT NULL DEFAULT 'streamlit_cloud',
     ip_hash VARCHAR(64),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -197,9 +255,11 @@ CREATE TABLE audit_logs (
 ---
 
 ## 3. High-Performance Query Indexes
+
 ```sql
 -- 1. User document lookups
 CREATE INDEX idx_documents_owner ON documents (owner_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_documents_client_source ON documents (client_source);
 
 -- 2. Class submissions lookup for instructors
 CREATE INDEX idx_submissions_assignment ON submissions (assignment_id, submitted_at DESC);
@@ -211,6 +271,14 @@ CREATE INDEX idx_sources_trgm_text ON sources USING gin (raw_text gin_trgm_ops);
 CREATE INDEX idx_grammar_findings_report ON grammar_findings (report_id);
 CREATE INDEX idx_similarity_matches_report ON similarity_matches (report_id);
 
--- 5. Audit logs by resource
+-- 5. Copilot & Paraphrase history lookups
+CREATE INDEX idx_copilot_executions_document ON copilot_executions (document_id, executed_at DESC);
+CREATE INDEX idx_paraphrase_variants_document ON paraphrase_variants (document_id);
+
+-- 6. Citation lookups
+CREATE INDEX idx_citation_references_doi ON citation_references (doi);
+CREATE INDEX idx_citation_references_document ON citation_references (document_id);
+
+-- 7. Audit logs by resource
 CREATE INDEX idx_audit_logs_resource ON audit_logs (resource_type, resource_id);
 ```

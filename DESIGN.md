@@ -1,201 +1,291 @@
 # SYSTEM DESIGN & UI/UX SPECIFICATION (`DESIGN.md`)
 **Project:** Academic Writing Intelligence Platform  
+**Version:** 0.2.0-beta (Material 3 & 3D Spatial UI Upgrade)  
 **Status:** Approved for Implementation  
-**Design Persona:** Clean Scholarly Precision (*"Oxford Modern Minimal"*)
+**Design Philosophy:** *Google Material Design 3 (Material You) + 3D Tactile Precision & Micro-Animations*  
+**Live URL:** [https://ai-detector-best.streamlit.app/](https://ai-detector-best.streamlit.app/)  
+**Brand Asset:** `public/brand/logo_3d_material3.jpg`
 
 ---
 
-## 1. Information Architecture & Sitemap
+## 1. Brand Identity & 3D Material 3 Animated Logo
 
-### 1.1 Sitemap
-```text
-/ (Home / Active Writing Studio)
-├── #editor-canvas         (Primary document editing surface)
-├── #inspection-rail       (Right-hand diagnostic panel: Grammar, Similarity, Metrics)
-├── #source-inspector      (Drawer/modal for deep citation and source analysis)
-├── /history               (Saved document versions - P1)
-└── /settings              (Engine configurations & corpus provenance)
-```
+### 1.1 Brand Identity & Concept
+The brandmark embodies **academic rigor, technological transparency, and ethical research intelligence**. It rejects punitive, menacing scanner iconography in favor of an empowering scholarly companion.
 
-### 1.2 Layout Hierarchy (Desktop 3-Column / Dual-Pane Hybrid)
-1. **Top Navigation Bar (Height: 56px / `h-14`):**
-   * Left: Platform Brandmark (*"Veritas Academic"*) + Document Title (inline editable).
-   * Center: Language Selector (`Bahasa Indonesia` / `English (US)` / `English (UK)`) + Mode Switcher.
-   * Right: Word Count Badge, Run Check Button (`Cmd/Ctrl + Enter`), Export Action, Clear Canvas.
-2. **Main Workspace (`flex-1 flex overflow-hidden`):**
-   * **Left / Center Canvas (`w-full lg:w-7/12 xl:w-2/3`):** Uncluttered distraction-free typing surface with line numbers and margin gutter for diagnostic flags.
-   * **Right Diagnostic Rail (`w-full lg:w-5/12 xl:w-1/3`):** Fixed-width inspection panel with tabs:
-     * Tab 1: **Issues & Suggestions** (Grammar, Spelling, Punctuation).
-     * Tab 2: **Similarity & Sources** (Overall percentage, matched shingle list, citation references).
-     * Tab 3: **Document Metrics** (Reading time, lexical density, sentence count).
+![3D Material 3 Animated Logo](file:///Users/jevin/AI%20CHECKER/public/brand/logo_3d_material3.jpg)
 
----
+### 1.2 Symbolic Architecture:
+1. **The 3D Sculpted Fountain Pen Nib:**
+   * Hand-finished metallic titanium and frosted glass body.
+   * Symbolizes authorial sovereignty, scholarly precision, and original voice.
+2. **The Glowing Iridescent Neural Möbius Loop:**
+   * Translucent holographic ribbon woven through the pen nib, illuminated with spectral cyan, cobalt, and coral bioluminescent nodes.
+   * Symbolizes the 12-skill Academic AI Copilot, continuous language evaluation, and transparent AST token analysis.
+3. **The Layered Translucent Open Book Foundation:**
+   * Tactile soft-matte cobalt base with frosted glass pages that emit subtle ambient light.
+   * Symbolizes open-access literature provenance (CC-BY, arXiv, DOAJ) and ethical, verifiable attribution.
 
-## 2. Design System & Tokens
-
-### 2.1 Color Palette (WCAG 2.1 AA Compliant)
-We avoid generic web app colors in favor of a bespoke, high-contrast academic palette:
+### 1.3 3D Spatial States & Micro-Animation Specifications
 
 ```css
-:root {
-  /* Surfaces */
-  --bg-primary: #FDFDFE;          /* Clean ivory-tinted paper white */
-  --bg-surface: #F8F9FA;          /* Neutral workbench grey */
-  --bg-panel: #FFFFFF;            /* Pure white for elevation cards */
-  --border-subtle: #E2E8F0;       /* Slate 200 */
-  --border-strong: #CBD5E1;       /* Slate 300 */
+/* 3D Material 3 Spatial Physics & Micro-Animation Keyframes */
 
-  /* Typography */
-  --text-primary: #0F172A;        /* Deep Slate 900 for laser-sharp readability */
-  --text-secondary: #475569;      /* Slate 600 */
-  --text-muted: #94A3B8;          /* Slate 400 */
+/* 1. Idle Floating Animation (Tactile Levitation) */
+@keyframes float3d {
+  0% {
+    transform: translateY(0px) rotateX(2deg) rotateY(-3deg);
+    filter: drop-shadow(0 12px 20px rgba(26, 115, 232, 0.18));
+  }
+  50% {
+    transform: translateY(-8px) rotateX(4deg) rotateY(2deg);
+    filter: drop-shadow(0 20px 30px rgba(26, 115, 232, 0.28));
+  }
+  100% {
+    transform: translateY(0px) rotateX(2deg) rotateY(-3deg);
+    filter: drop-shadow(0 12px 20px rgba(26, 115, 232, 0.18));
+  }
+}
 
-  /* Brand / Action Accent */
-  --accent-primary: #1E3A8A;      /* Deep Academic Navy (Blue 900) */
-  --accent-hover: #172554;        /* Blue 950 */
-  --accent-light: #EFF6FF;        /* Blue 50 */
+/* 2. Analyzing State: Neural Ribbon Pulse & Orbit */
+@keyframes neuralOrbit {
+  0% {
+    transform: rotate(0deg) scale(1);
+    filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.6));
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+    filter: drop-shadow(0 0 26px rgba(168, 85, 247, 0.8));
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.6));
+  }
+}
 
-  /* Diagnostic Semantic Tokens */
-  --diagnostic-error-text: #991B1B;   /* Red 800 */
-  --diagnostic-error-bg: #FEF2F2;     /* Red 50 */
-  --diagnostic-error-border: #F87171; /* Red 400 */
-  --diagnostic-error-line: #DC2626;   /* Red 600 (Wavy underline) */
+/* 3. Success / Check Complete (Haptic Spring Pulse) */
+@keyframes tactileSuccessBounce {
+  0% { transform: scale(0.92); }
+  45% { transform: scale(1.08); }
+  70% { transform: scale(0.97); }
+  100% { transform: scale(1.0); }
+}
 
-  --diagnostic-sim-text: #92400E;     /* Amber 800 */
-  --diagnostic-sim-bg: #FFFBEB;       /* Amber 50 */
-  --diagnostic-sim-border: #FBBF24;   /* Amber 400 */
-  --diagnostic-sim-line: #D97706;     /* Amber 600 (Dashed underline) */
+/* 4. Interactive 3D Card Hover Tilt */
+.m3-3d-card {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  transition: transform 300ms cubic-bezier(0.2, 0.0, 0, 1.0),
+              box-shadow 300ms cubic-bezier(0.2, 0.0, 0, 1.0);
+}
 
-  --diagnostic-style-text: #065F46;   /* Emerald 800 */
-  --diagnostic-style-bg: #ECFDF5;     /* Emerald 50 */
-  --diagnostic-style-border: #34D399; /* Emerald 400 */
+.m3-3d-card:hover {
+  transform: translateY(-4px) perspective(1000px) rotateX(1.5deg) rotateY(-1.5deg);
+  box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.12),
+              0 4px 12px -2px rgba(26, 115, 232, 0.08);
 }
 ```
 
-### 2.2 Typography
-* **Editorial Canvas Font:** `Newsreader` / `Lora` (Serif, standard academic reading typeface) or `Inter` (sans-serif toggle for technical reports). Font size: `1.125rem` (`18px`), Line height: `1.75` (`leading-relaxed`) for optimal ocular stamina during long-form reading.
-* **UI Interface & Diagnostic Font:** `Inter`, `ui-sans-serif, system-ui`.
-* **Monospace / Code / Metrics:** `JetBrains Mono`, `ui-monospace`.
+---
 
-### 2.3 Spacing & Radius
-* Radius: `rounded-lg` (`8px`) for cards; `rounded-md` (`6px`) for buttons and badges.
-* Elevation: Subtle borders (`border border-slate-200`) with soft low-blur shadows (`shadow-sm` / `shadow-md`).
+## 2. Material Design 3 (Material You) Design System
+
+### 2.1 M3 Tonal Palette & Dynamic Color Tokens
+We strictly adhere to the Material Design 3 Tonal Palette system, balancing scholarly sobriety with tactile vitality:
+
+```css
+:root {
+  /* =====================================================================
+     PRIMARY PALETTE (Academic Cobalt & Deep Azure)
+     ===================================================================== */
+  --md-sys-color-primary: #1A73E8;               /* M3 Primary Key */
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #D3E3FD;     /* Soft Azure Tonal Container */
+  --md-sys-color-on-primary-container: #041E49;  /* Deep Navy Content */
+
+  /* =====================================================================
+     SECONDARY PALETTE (Scholarly Slate & Indigo)
+     ===================================================================== */
+  --md-sys-color-secondary: #4A5C92;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #DDE1FF;
+  --md-sys-color-on-secondary-container: #001453;
+
+  /* =====================================================================
+     TERTIARY PALETTE (AI Copilot Iris & Amethyst)
+     ===================================================================== */
+  --md-sys-color-tertiary: #7C5295;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #F2DAFF;
+  --md-sys-color-on-tertiary-container: #310B4B;
+
+  /* =====================================================================
+     SURFACES & ELEVATION CONTAINERS (M3 Elevation Model)
+     ===================================================================== */
+  --md-sys-color-surface: #FDFBFF;               /* Ivory-white canvas */
+  --md-sys-color-on-surface: #1A1C1E;            /* High-contrast Slate 950 */
+  --md-sys-color-surface-variant: #E1E2EC;
+  --md-sys-color-on-surface-variant: #44474F;
+  --md-sys-color-surface-container-lowest: #FFFFFF;
+  --md-sys-color-surface-container-low: #F7F2FA; /* Subtle Section Tint */
+  --md-sys-color-surface-container: #F3EDF7;     /* Standard Resting Card */
+  --md-sys-color-surface-container-high: #ECE6F0;/* Hovered Container */
+  --md-sys-color-surface-container-highest: #E6E0E9;
+  --md-sys-color-outline: #74777F;
+  --md-sys-color-outline-variant: #C4C7C5;
+
+  /* =====================================================================
+     SEMANTIC DIAGNOSTIC TOKENS (PUEBI, Similarity, Style)
+     ===================================================================== */
+  /* Error (Spelling / Grammar / PUEBI Flaws) */
+  --md-sys-color-error: #BA1A1A;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-error-container: #FFDAD6;
+  --md-sys-color-on-error-container: #410002;
+  --md-sys-color-error-underline: #DC2626;
+
+  /* Warning / Similarity Attribution */
+  --md-sys-color-similarity: #B25E00;
+  --md-sys-color-on-similarity: #FFFFFF;
+  --md-sys-color-similarity-container: #FFE0B2;
+  --md-sys-color-on-similarity-container: #4E2600;
+  --md-sys-color-similarity-underline: #D97706;
+
+  /* Style / Paraphrase Recommendation */
+  --md-sys-color-style: #006D44;
+  --md-sys-color-on-style: #FFFFFF;
+  --md-sys-color-style-container: #9BF6BF;
+  --md-sys-color-on-style-container: #002111;
+}
+```
+
+### 2.2 Material 3 Elevation System (0 to 5) with 3D Spatial Lighting
+Unlike legacy flat shadows, M3 uses **tonal surface elevation** combined with soft volumetric ambient diffusion:
+
+| Elevation Level | Surface Tint | 3D Volumetric Box Shadow | Component Usage |
+| :--- | :--- | :--- | :--- |
+| **Level 0** (0dp) | `surface` | `none` | Background workspace canvas, editor text page |
+| **Level 1** (1dp) | `surface-container-low` | `0 1px 3px 1px rgba(0,0,0,0.06), 0 1px 2px 0 rgba(0,0,0,0.1)` | Diagnostic rail panel, stats counter badge |
+| **Level 2** (3dp) | `surface-container` | `0 4px 8px 3px rgba(0,0,0,0.07), 0 1px 3px 0 rgba(0,0,0,0.12)` | Resting card, matched source preview card |
+| **Level 3** (6dp) | `surface-container-high` | `0 8px 16px 4px rgba(0,0,0,0.08), 0 2px 6px 0 rgba(0,0,0,0.14)` | Hovered 3D card, Floating Action Button (FAB) |
+| **Level 4** (8dp) | `surface-container-highest` | `0 12px 24px 6px rgba(15,23,42,0.14)` | Coordinate-anchored suggestion popover |
+| **Level 5** (12dp)| `surface-container-highest` | `0 24px 48px 12px rgba(15,23,42,0.2)` | Crossref citation modal, fullscreen drawer |
+
+### 2.3 Expressive M3 Shape Tokens (Border Radii)
+* **Shape Small (`rounded-lg` / `8px`):** Inline suggestion replacement pills, search inputs.
+* **Shape Medium (`rounded-xl` / `12px`):** Diagnostic rule cards, language dropdowns.
+* **Shape Large (`rounded-2xl` / `16px`):** Matched source cards, editor canvas border wrapper.
+* **Shape Extra Large (`rounded-3xl` / `28px`):** Floating dialogs, Copilot chat bubbles, navigation drawers.
+* **Shape Full (`rounded-full` / `9999px`):** Primary action buttons, FABs, status chips, avatar circles.
+
+### 2.4 Typography (Google M3 Expressive Scale)
+* **Display Large / Brandmark:** `Google Sans` / `Outfit` (`57px`, weight 400).
+* **Headlines (H1, H2, H3):** `Google Sans` / `Inter` (`32px` / `24px` / `20px`, weight 600).
+* **Editor Reading Surface (Academic Body):** `Newsreader` / `Lora` (Serif, `18px`, line height `1.75`) for extended manuscript reading comfort.
+* **Interface Body & Diagnostics:** `Inter` / `Roboto Flex` (`14px` / `16px`, line height `1.5`).
+* **Monospace / Statistics / DOI:** `JetBrains Mono` (`13px`, tabular figures for zero jitter during live typing counter).
 
 ---
 
-## 3. Editor Interaction & Highlight States
+## 3. UI/UX Information Architecture & Dual-Pane Canvas
 
-### 3.1 Decoration Styles in TipTap / ProseMirror
-* **Grammar / Spelling Error:**
-  * CSS Class: `.decoration-grammar-error`
-  * Visual: Subtle red highlight background with a 1.5px solid or squiggly underline (`text-decoration-color: #DC2626`).
-* **Similarity Match:**
-  * CSS Class: `.decoration-similarity-match`
-  * Visual: Soft amber/yellow highlighter background (`rgba(251, 191, 36, 0.25)`) with a discrete amber border.
-* **Active Selected Highlight:**
-  * When clicked or navigated via keyboard, the highlight transitions to a focus state (`ring-2 ring-blue-500 ring-offset-1`).
-
-### 3.2 Floating Suggestion Popover
-When a user clicks on an inline highlighted token:
-* A contextual popover appears directly anchored to the selection coordinates.
-* **Contents:**
-  1. Header: Rule Category badge (`Spelling`, `Subject-Verb Agreement`, or `Similarity`).
-  2. Contextual Explanation: *"Consider changing 'go' to 'went' to align with past tense temporal marker 'yesterday'."*
-  3. Action Button: Replacement pill (`[ went ]` with green hover state).
-  4. Dismiss Button: Ignore rule (`[ Ignore ]` with icon).
-* **Keyboard Navigation:**
-  * `Tab` cycles focus between replacement pill and ignore button.
-  * `Enter` commits the replacement.
-  * `Esc` closes the popover without making changes.
-
----
-
-## 4. Similarity Report & Diagnostic Rail UI
-
-### 4.1 Similarity Score Header
-* **Radial / Bar Gauge:** Displays total document match percentage (e.g., `14%`).
-* **Status Legend:**
-  * `< 15%`: Green tint — Normal citation / common phrase overlap.
-  * `15% - 25%`: Amber tint — Moderate shared phrasing; review suggested.
-  * `> 25%`: Rose tint — High concentration of matched phrasing; verify citations.
-* **Mandatory Subtitle:** *"Calculated against 50 indexed Open Access papers. Similarity indicates shared phrase structure, not plagiarism."*
-
-### 4.2 Matched Source Item Card
 ```text
-┌────────────────────────────────────────────────────────┐
-│ [1] 8.4% Match • 4 Matched Sentences                   │
-│ Title: "Attention Is All You Need"                     │
-│ Authors: Vaswani et al. (2017)                         │
-│ Source: arXiv:1706.03762 [cs.CL]                       │
-├────────────────────────────────────────────────────────┤
-│ Matched Text Snippet:                                  │
-│ "...recurrent neural networks have been firmly         │
-│ established as state of the art approaches in..."      │
-│                                                        │
-│ [ Jump to Section in Document ]  [ View Source DOI ↗ ] │
-└────────────────────────────────────────────────────────┘
+/ (Academic Writing Studio)
+├── #top-app-bar           (Brandmark 3D Logo, Language Switcher, Action Cluster)
+├── #editor-workspace      (Center stage ivory writing surface with line guides)
+│   └── #tiptap-surface    (ProseMirror AST decorations + floating popover)
+├── #floating-fab          (M3 Extended Floating Action Button: "Jalankan Analisis")
+├── #diagnostic-rail       (Collapsible right-hand drawer with 4 specialized tabs)
+│   ├── Tab 1: Tata Bahasa & Ejaan (PUEBI/KBBI + English conventions)
+│   ├── Tab 2: Kemiripan & Sumber (5-gram Jaccard matches + Crossref DOI links)
+│   ├── Tab 3: Parafrase & Gaya (Formal vs Concise dual-mode cards)
+│   └── Tab 4: Academic Copilot (12 specialized interactive skills)
+└── #crossref-modal        (Direct DOI/literature search with APA 7 & IEEE generator)
 ```
 
 ---
 
-## 5. System States (Loading, Empty, Error)
+## 4. Key Component Design Specifications
 
-### 5.1 Empty State (Initial Load)
-* Canvas contains a tasteful watermark placeholder:
-  *"Type or paste your academic manuscript here to begin... (Supports up to 3,000 words in English and Indonesian)"*
-* Diagnostic rail displays a checklist of active engines with ready indicators.
+### 4.1 M3 Extended Floating Action Button (FAB)
+* **Dimensions:** Height: `56px`, Padding: `24px`, Shape: `rounded-full` (`9999px`).
+* **Surface:** `md-sys-color-primary-container` (`#D3E3FD`) with `on-primary-container` (`#041E49`).
+* **Resting Elevation:** Level 3 (`box-shadow: 0 8px 16px ...`).
+* **Hover State:** Level 4 + gentle 3D bounce (`tactileSuccessBounce`).
+* **Content:** 3D Sparkle / Pen Icon + *"Jalankan Analisis Menyeluruh (Cmd + Enter)"*.
 
-### 5.2 Loading / Checking State
-* The "Run Check" button switches to a subtle indeterminate spinner with text: *"Analyzing syntax and corpus fingerprints..."*
-* The editor remains editable (non-blocking). Typing during an active check gracefully invalidates stale pending requests.
+### 4.2 Bilingual Segmented Button (M3)
+* **Usage:** Switch active linguistic evaluation between **Bahasa Indonesia (PUEBI)** and **English (Academic)**.
+* **Visual Structure:** Connected pill container with sliding active pill selector (`transition: all 250ms cubic-bezier(0.2, 0, 0, 1)`).
+* **Active State:** Deep Azure fill with white text; Inactive State: Transparent with subtle outline.
 
-### 5.3 Error States (Resilience)
-* **LanguageTool Offline:** If the local LanguageTool server is unreachable:
-  * Banner in rail: *"Grammar Engine unreachable. Retrying locally or check Docker status."*
-  * The rest of the app (Editor, Word Counter, Similarity Engine) continues working without crashing.
-* **Text Exceeds Limit:**
-  * If word count exceeds 3,000 words: Visual warning badge in header turns amber with helpful suggestion to split by chapter/section.
+### 4.3 3D Coordinate-Anchored Suggestion Popover
+When a user clicks on an inline highlighted token:
+* Anchors within `8px` of the target token's DOM bounding rect.
+* **Surface:** Frosted glass with `backdrop-filter: blur(16px)` and M3 Level 4 elevation.
+* **Layout:**
+  1. Header chip: `PUEBI Baku` / `Contraction Expansion` with category color.
+  2. Rationale card: *"Ubah 'praktek' menjadi 'praktik' sesuai pedoman KBBI V."*
+  3. Action Pill: `[ Terapkan: praktik ]` with green ripple ink effect.
+  4. Dismiss icon: `[ Abaikan ]` with soft neutral hover.
+
+### 4.4 Dual-Mode Academic Paraphraser Cards
+* Rendered side-by-side or stacked in the diagnostic rail:
+  * **Card A (Mode Formal Baku):** Tinted with `secondary-container`, emphasizing elevated scholarly tone and passive syntactic structures.
+  * **Card B (Mode Lugas / Concise):** Tinted with `primary-container`, emphasizing crisp delivery, active verbs, and eliminated filler phrases.
+* Includes explicit visual badge: `✅ Sitasi & Fakta Terlindungi` (e.g. `(Vaswani et al., 2017)` remains preserved).
+
+### 4.5 Official Crossref Citation Inspector Card
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 📚 HASIL PENCARIAN CROSSREF                                     │
+│ Judul: Deep Residual Learning for Image Recognition             │
+│ Penulis: He, K., Zhang, X., Ren, S., & Sun, J. (2016)           │
+│ Jurnal: IEEE Conference on Computer Vision and Pattern Rec.     │
+│ DOI: 10.1109/CVPR.2016.90                                      │
+├─────────────────────────────────────────────────────────────────┤
+│ FORMAT SITASI SIAP SALIN:                                       │
+│ [APA 7]                                                         │
+│ He, K., Zhang, X., Ren, S., & Sun, J. (2016). Deep residual...  │
+│ [ Salin APA 7 📋 ]                                              │
+│                                                                 │
+│ [IEEE]                                                          │
+│ K. He, X. Zhang, S. Ren, and J. Sun, "Deep residual...", 2016. │
+│ [ Salin IEEE 📋 ]                                               │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 6. Accessibility & Keyboard Navigation (WCAG 2.1 AA)
-* **Contrast:** All text colors against their respective backgrounds pass a minimum contrast ratio of `4.5:1` (Large text `3.0:1`).
-* **Keyboard Shortcuts:**
-  * `Cmd/Ctrl + Enter`: Trigger full analysis.
-  * `Cmd/Ctrl + Shift + C`: Clear canvas with confirmation prompt.
-  * `Alt + [` and `Alt + ]`: Navigate to previous / next diagnostic finding.
-* **Screen Reader Announcers:** ARIA live regions (`aria-live="polite"`) announce: *"Check complete: 3 grammar suggestions, 1 source match found."*
+## 5. Motion, Physics & Micro-Animation System
+
+### 5.1 Easing Tokens (M3 Motion Curves)
+* **Emphasized Decelerate (Incoming elements):** `cubic-bezier(0.05, 0.7, 0.1, 1.0)` — 400ms duration.
+* **Emphasized Accelerate (Exiting elements):** `cubic-bezier(0.3, 0.0, 0.8, 0.15)` — 200ms duration.
+* **Standard Spring (Interactive buttons / 3D tilt):** `cubic-bezier(0.2, 0.0, 0, 1.0)` — 250ms duration.
+
+### 5.2 Accessibility (`prefers-reduced-motion`)
+All 3D tilts, orbital rotations, and floating keyframes are wrapped with motion-safety media queries:
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transform: none !important;
+  }
+}
+```
 
 ---
 
-## 7. Reusable Component Inventory
+## 6. Component Inventory & Asset Registry
 
-| Component Name | File Path | Props / Contract | Primary Role |
+| Component / Asset | Location | Material 3 Tokens Used | Description |
 | :--- | :--- | :--- | :--- |
-| **`TopNavbar`** | `components/layout/TopNavbar.tsx` | `wordCount`, `charCount`, `isAnalyzing`, `onRunCheck`, `onClear` | Top control strip with language dropdown and action trigger |
-| **`EditorCanvas`** | `components/editor/EditorCanvas.tsx` | `content`, `onChange`, `decorations`, `onSelectDecoration` | Rich text editor (TipTap) surface rendering inline diagnostic decorations |
-| **`DiagnosticRail`** | `components/reports/DiagnosticRail.tsx` | `grammarIssues`, `similarityReport`, `activeTab`, `onSelectIssue` | Right tabbed drawer showing categorized diagnostic cards |
-| **`SuggestionPopover`** | `components/editor/SuggestionPopover.tsx` | `issue`, `anchorPosition`, `onApply`, `onDismiss` | Floating coordinate-anchored popover over flagged text tokens |
-| **`SimilarityGauge`** | `components/reports/SimilarityGauge.tsx` | `overallPercent`, `totalSentences`, `matchedSentences` | Radial/bar gauge with academic disclaimer subtitle |
-| **`MatchedSourceCard`** | `components/reports/MatchedSourceCard.tsx` | `source`, `matchRatio`, `onJumpToOffset` | Expandable source attribution card with external DOI link |
-| **`StatusBadge`** | `components/ui/StatusBadge.tsx` | `variant` (`error`, `warning`, `info`, `success`), `label` | Micro-pill indicating issue category (e.g., Spelling vs Grammar) |
-
----
-
-## 8. Functional Acceptance Criteria for MVP Screens
-
-### AC-SCREEN-01: Writing Canvas (`/`)
-* **AC-01.1:** Renders within 100ms with a clear ivory background (`#FDFDFE`) and no horizontal scrollbars on desktop (`>= 1024px`) or tablet (`>= 768px`).
-* **AC-01.2:** Typing speed maintains 60 FPS without cursor jumping, character drops, or layout shifts.
-* **AC-01.3:** Top navigation bar displays accurate real-time word count incrementing/decrementing on each whitespace boundary.
-
-### AC-SCREEN-02: Suggestion Popover Interaction
-* **AC-02.1:** Clicking on an inline red-highlighted span anchors the popover within 8px of the target token's client bounding rectangle.
-* **AC-02.2:** Pressing `Enter` when the replacement pill is focused applies the correction and moves the cursor immediately after the corrected word.
-* **AC-02.3:** Pressing `Escape` closes the popover and restores focus to the editor canvas at the previous selection offset.
-
-### AC-SCREEN-03: Similarity Report Rail
-* **AC-03.1:** Display the exact match percentage calculated against the local open-access corpus.
-* **AC-03.2:** Each matched source card must render author, year, title, and a verified URL/DOI.
-* **AC-03.3:** Clicking "Jump to Section" scrolls the editor viewport directly to the matching sentence and briefly applies an emphasis pulse animation.
-
+| **3D M3 Brand Logo** | `public/brand/logo_3d_material3.jpg` | Primary, Tertiary, Translucent Clay | High-res 3D icon with floating levitation & orbital glow |
+| **Top Navigation Bar** | `components/layout/TopNavbar.tsx` | `surface-container-low`, Shape Large | Responsive header with word counter and language segmented button |
+| **Editor Canvas** | `components/editor/AcademicEditor.tsx` | `surface`, Newsreader/Inter, Level 0 | Zero-lag typing surface with AST decoration renderer |
+| **Diagnostic Rail** | `components/reports/DiagnosticRail.tsx` | `surface-container`, Level 1 | 4-tab diagnostic inspector with 3D tilt cards |
+| **Streamlit 3D Theme** | `streamlit_app/app.py` | Custom CSS injection | Streamlit Cloud deployment styled with M3 color scheme and 3D logo |
+| **Word Add-in Pane** | `word-addin/taskpane.html` | Fluent + M3 Hybrid | Office.js task pane with selection reading and in-situ replacement |

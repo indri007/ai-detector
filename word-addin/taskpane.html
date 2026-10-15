@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AcademicWrite AI Task Pane</title>
+  <title>AcademicWrite AI - Word Add-in</title>
   <!-- Office.js library -->
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
   <link rel="stylesheet" href="taskpane.css" />
@@ -14,26 +14,27 @@
     <header class="app-header">
       <div class="logo-area">
         <span class="brand-title">AcademicWrite AI</span>
-        <span class="badge">Word Add-in</span>
+        <span class="badge">Word Add-in v0.2.0</span>
       </div>
       <div class="lang-selector">
         <select id="langSelect">
+          <option value="id-ID" selected>Bahasa Indonesia</option>
           <option value="en-US">English (US)</option>
           <option value="en-GB">English (UK)</option>
-          <option value="id-ID">Bahasa Indonesia</option>
         </select>
       </div>
     </header>
 
-    <!-- Privacy Consent Notice -->
-    <div class="consent-notice">
-      🔒 <strong>Privasi Aman:</strong> Teks hanya dianalisis secara lokal setelah Anda mengklik tombol di bawah. Naskah tidak pernah disimpan permanen atau dibagikan.
+    <!-- Connection & Privacy Status -->
+    <div class="status-strip">
+      <span id="connectionBadge" class="conn-badge">Memeriksa koneksi...</span>
+      <span class="privacy-badge">🔒 Zero-Retention Privacy</span>
     </div>
 
     <!-- Navigation Tabs -->
     <nav class="tab-nav">
-      <button class="tab-btn active" data-tab="tab-grammar">Grammar</button>
-      <button class="tab-btn" data-tab="tab-rewrite">Rewrite</button>
+      <button class="tab-btn active" data-tab="tab-grammar">Ejaan & PUEBI</button>
+      <button class="tab-btn" data-tab="tab-rewrite">Parafrase</button>
       <button class="tab-btn" data-tab="tab-citations">Sitasi & DOI</button>
       <button class="tab-btn" data-tab="tab-similarity">Kemiripan</button>
     </nav>
@@ -43,48 +44,47 @@
       <div class="panel-header">
         <label>Teks Terpilih di Dokumen:</label>
         <button id="btnReadSelection" class="btn-secondary" title="Ambil teks yang sedang diblok di Word">
-          📥 Ambil Teks
+          📥 Ambil Teks dari Word
         </button>
       </div>
-      <textarea id="selectedTextPreview" placeholder="Pilih/blok kalimat di Word, lalu klik 'Ambil Teks'..." readonly></textarea>
+      <textarea id="selectedTextPreview" placeholder="Pilih/blok kalimat di Word, lalu klik 'Ambil Teks dari Word'..." readonly></textarea>
       <div class="char-count" id="charCountDisplay">0 kata | 0 karakter</div>
     </section>
 
-    <!-- TAB 1: GRAMMAR -->
+    <!-- TAB 1: GRAMMAR & PUEBI -->
     <div id="tab-grammar" class="tab-content active">
       <button id="btnCheckGrammar" class="btn-primary">🔍 Periksa Tata Bahasa & Ejaan</button>
       <div id="grammarResultsList" class="results-list">
-        <div class="empty-state">Pilih kalimat dan klik periksa untuk melihat saran.</div>
+        <div class="empty-state">Pilih kalimat di Word dan klik periksa untuk menemukan saran koreksi.</div>
       </div>
     </div>
 
     <!-- TAB 2: REWRITE / STYLE -->
     <div id="tab-rewrite" class="tab-content">
       <div class="rewrite-controls">
-        <label>Gaya Penulisan:</label>
+        <label>Mode Penulisan Ilmiah:</label>
         <select id="rewriteModeSelect">
-          <option value="academic_formal">Formal Akademik</option>
-          <option value="concise">Ringkas & Padat</option>
-          <option value="clarity">Peningkatan Kejelasan</option>
+          <option value="academic_formal">Mode Formal Baku (Akademik)</option>
+          <option value="concise">Mode Lugas / Ringkas (Eliminasi Pleonasme)</option>
         </select>
-        <button id="btnRunRewrite" class="btn-primary mt-2">✨ Parafrase Kalimat</button>
+        <button id="btnRunRewrite" class="btn-primary mt-2">✨ Parafrase Kalimat Terpilih</button>
       </div>
       <div id="rewriteResultArea" class="rewrite-card hidden">
-        <div class="card-header">Saran Penulisan:</div>
+        <div class="card-header">Saran Perbaikan Kalimat:</div>
         <p id="rewriteTextOutput" class="rewrite-output"></p>
         <p id="rewriteRationaleOutput" class="rewrite-rationale"></p>
-        <button id="btnApplyRewriteToWord" class="btn-success">📝 Ganti Teks di Word</button>
+        <button id="btnApplyRewriteToWord" class="btn-success">📝 Ganti Langsung di Word</button>
       </div>
     </div>
 
     <!-- TAB 3: CITATIONS & DOI -->
     <div id="tab-citations" class="tab-content">
       <div class="search-box">
-        <input type="text" id="citationSearchInput" placeholder="Cari judul paper atau DOI (Crossref)..." />
+        <input type="text" id="citationSearchInput" placeholder="Cari judul paper atau DOI di Crossref..." />
         <button id="btnSearchCitations" class="btn-secondary">Cari</button>
       </div>
       <div id="citationResultsList" class="results-list">
-        <div class="empty-state">Ketik kata kunci untuk mencari referensi akademik resmi.</div>
+        <div class="empty-state">Ketik kata kunci untuk mencari referensi resmi Crossref ber-DOI.</div>
       </div>
     </div>
 
@@ -92,7 +92,7 @@
     <div id="tab-similarity" class="tab-content">
       <button id="btnCheckSimilarity" class="btn-primary">📊 Uji Kemiripan Korpus Terbuka</button>
       <div id="similarityResultArea" class="results-list">
-        <div class="empty-state">Uji kecocokan teks terhadap korpus ilmiah terbuka terindeks.</div>
+        <div class="empty-state">Uji kecocokan teks terhadap korpus ilmiah terbuka terindeks (5-gram Jaccard).</div>
       </div>
     </div>
 

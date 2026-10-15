@@ -43,13 +43,37 @@ body {
   margin-left: 4px;
 }
 
-.consent-notice {
+.status-strip {
+  background-color: #F8FAFC;
+  padding: 6px 14px;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+}
+
+.conn-badge {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+  background-color: #F1F5F9;
+  color: #64748B;
+}
+
+.conn-badge.online {
+  background-color: #DEF7EC;
+  color: #03543F;
+}
+
+.conn-badge.fallback {
   background-color: #FEF3C7;
   color: #92400E;
-  font-size: 11px;
-  padding: 8px 12px;
-  border-bottom: 1px solid #FDE68A;
-  line-height: 1.4;
+}
+
+.privacy-badge {
+  color: #0369A1;
+  font-weight: 600;
 }
 
 .tab-nav {

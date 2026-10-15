@@ -43,8 +43,11 @@ if "chat_history" not in st.session_state:
 
 # --- Sidebar Configuration ---
 with st.sidebar:
+    logo_path = os.path.join(APP_DIR, "logo_3d_material3.jpg")
+    if os.path.exists(logo_path):
+        st.image(logo_path, use_container_width=True)
     st.title("🎓 AcademicWrite AI")
-    st.caption("Cloud Academic Writing & Intelligence Platform")
+    st.caption("Material 3 • Academic Writing & Intelligence Platform")
     st.markdown("---")
     
     st.markdown("### 🌐 Pengaturan Bahasa")

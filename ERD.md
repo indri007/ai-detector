@@ -1,29 +1,45 @@
 # ENTITY RELATIONSHIP DIAGRAM & DATA MODEL (`ERD.md`)
 **Project:** Academic Writing Intelligence Platform  
-**Architecture:** Tri-Frontend (Next.js, Streamlit, Word Add-in) + FastAPI Shared Core + PostgreSQL 14+  
-**Status:** Approved Specification  
-**Architect:** Database Architect & Principal Engineer
+**Version:** 0.2.0-beta (Synchronized with Live Deployment & PRD v0.2.0)  
+**Architecture:** Tri-Frontend (Next.js Studio, Streamlit Cloud, Word Add-in) + FastAPI Shared Core + PostgreSQL 14+  
+**Status:** Implemented & Approved Specification  
+**Architect:** Database Architect & Principal Engineer  
+**Live URL:** [https://ai-detector-best.streamlit.app/](https://ai-detector-best.streamlit.app/)
 
 ---
 
 ## 1. System Architecture & Entity Classification
 
-The data architecture is structured into two coherent tiers:
-1. **Tier 1 (MVP Baseline — Operational):** Document writing, syntax analysis, local drafts, similarity reports, and open-access corpus provenance.
-2. **Tier 2 (Academic Management — Extended):** Multi-tenant institutions, classes, enrollments, assignments, immutable submissions, reviewer feedback, and audit logs.
+The data architecture is structured across three cohesive operational tiers:
+1. **Tier 1 (Core Authoring & Diagnostics — Implemented in v0.2.0):** 
+   * Active document editing, real-time metrics, bilingual PUEBI/KBBI and English syntax findings.
+   * Deterministic 5-gram Jaccard similarity against verified open-access corpus literature.
+   * Academic Paraphrasing variants (Formal & Concise) with scientific rationales and citation retention.
+   * Academic AI Copilot execution logs across 12 specialized academic skills.
+   * Official Crossref citation lookup with formatted APA 7 and IEEE bibliographies.
+   * Multi-client metadata tracking (`streamlit_cloud`, `web_studio`, `word_addin`).
+2. **Tier 2 (Academic Management & Classroom — Fast Follow):** 
+   * Multi-tenant institutions, classes, enrollments, assignments, immutable turn-in submissions, and reviewer feedback.
+3. **Tier 3 (Security, Audit & Governance — Active):** 
+   * Non-repudiation audit trail, zero document-leak logging, and ephemeral guest session purge.
+
+---
 
 ### Entity Inventory:
-* **`User`:** Identity and authentication (Roles: `admin`, `instructor`, `student`).
+* **`User`:** Identity and authentication (Roles: `admin`, `instructor`, `student`). Nullable for guest/stateless sessions.
 * **`Institution`:** University, faculty, or research center.
 * **`Class`:** Academic course/semester instance owned by an instructor.
 * **`Enrollment`:** Association linking users to classes with role permissions (`instructor`, `student`).
 * **`Assignment`:** Course assignment with turn-in deadlines and guidelines.
-* **`Document`:** User draft workspace (mutable, auto-saved).
+* **`Document`:** User draft workspace (mutable, auto-saved in `localStorage` or PostgreSQL).
 * **`Submission`:** Immutable assignment turn-in snapshot referencing a document version.
-* **`AnalysisReport` / `AnalysisJob`:** Diagnostic run records (Grammar, Style, Similarity).
-* **`GrammarFinding`:** Offset-anchored syntax, spelling, and PUEBI/academic style issues.
-* **`SimilarityMatch` / `MatchedSource`:** Granular attribution records against indexed literature.
+* **`AnalysisReport`:** Diagnostic run records (Grammar, Style, Similarity, Client Origin).
+* **`GrammarFinding`:** Offset-anchored syntax, spelling, and PUEBI/academic style issues with atomic replacement.
+* **`SimilarityMatch`:** Granular attribution records against indexed literature.
 * **`Source` / `CorpusDocument`:** Verified reference literature with DOI and license provenance.
+* **`CopilotExecution`:** Log and state of Academic AI Copilot runs across the 12 specialized skills (Gemini 2.5 Flash / local fallback).
+* **`ParaphraseVariant`:** Academic sentence/passage rewrites with mode tags and preserved constraints.
+* **`CitationReference`:** Crossref-verified citations with APA 7 and IEEE bibliographic strings.
 * **`Feedback`:** Inline academic feedback, annotations, and grades from instructors.
 * **`AuditLog`:** Non-repudiation audit trail for security and academic integrity compliance.
 
@@ -48,6 +64,10 @@ erDiagram
     AnalysisReport ||--o{ GrammarFinding : "generates"
     AnalysisReport ||--o{ SimilarityMatch : "produces"
     Source ||--o{ SimilarityMatch : "matched_against"
+
+    Document ||--o{ CopilotExecution : "interacts_with"
+    Document ||--o{ ParaphraseVariant : "revises_into"
+    Document ||--o{ CitationReference : "cites"
 
     Document ||--o{ Feedback : "receives_annotations"
     User ||--o{ Feedback : "authored_by"
@@ -103,6 +123,7 @@ erDiagram
         text content
         integer word_count
         varchar language "id-ID | en-US | en-GB"
+        varchar client_source "streamlit_cloud | web_studio | word_addin"
         varchar content_hash
         timestamptz created_at
         timestamptz updated_at
@@ -124,6 +145,7 @@ erDiagram
         uuid document_id FK "nullable if attached to submission"
         uuid submission_id FK "nullable if personal check"
         varchar analysis_type "grammar | similarity | comprehensive"
+        varchar client_type "streamlit_cloud | web_studio | word_addin"
         varchar engine_version
         decimal similarity_score
         varchar status "pending | processing | completed | failed"
@@ -133,7 +155,7 @@ erDiagram
     GrammarFinding {
         uuid id PK
         uuid report_id FK
-        varchar rule_id
+        varchar rule_id "PUEBI_001 | CONTRACTION_001 | etc"
         varchar category "spelling | grammar | style | punctuation"
         text message
         integer start_offset
@@ -147,7 +169,7 @@ erDiagram
         uuid report_id FK
         uuid source_id FK
         decimal score
-        varchar method "5-gram_jaccard | minhash | embedding"
+        varchar method "5-gram_jaccard"
         text matched_text
     }
 
@@ -164,6 +186,43 @@ erDiagram
         timestamptz created_at
     }
 
+    CopilotExecution {
+        uuid id PK
+        uuid document_id FK "nullable in guest mode"
+        varchar skill_name "grammar | clarity | rewriter | tone | paraphrase | chat | imrad_summary | translate | doc_qa | citation_verify | research_gap | journal_formatter"
+        varchar model_used "gemini-2.5-flash | local_deterministic_fallback"
+        text input_context
+        text generated_response
+        integer prompt_tokens
+        integer completion_tokens
+        timestamptz executed_at
+    }
+
+    ParaphraseVariant {
+        uuid id PK
+        uuid document_id FK "nullable in guest mode"
+        varchar mode "academic_formal | concise"
+        text original_text
+        text rewritten_text
+        text scientific_rationale
+        boolean citations_preserved
+        timestamptz created_at
+    }
+
+    CitationReference {
+        uuid id PK
+        uuid document_id FK "nullable in guest mode"
+        varchar doi UK
+        varchar title
+        varchar authors
+        integer publication_year
+        varchar journal_name
+        text apa7_citation
+        text ieee_citation
+        boolean verified_crossref
+        timestamptz created_at
+    }
+
     Feedback {
         uuid id PK
         uuid document_id FK
@@ -176,10 +235,11 @@ erDiagram
 
     AuditLog {
         uuid id PK
-        uuid actor_id FK
-        varchar action "login | document_create | analysis_run | submission | delete"
-        varchar resource_type "document | submission | report"
+        uuid actor_id FK "nullable for guest actions"
+        varchar action "login | analysis_run | copilot_skill | crossref_search | submission | delete"
+        varchar resource_type "document | submission | report | copilot"
         uuid resource_id
+        varchar client_type "streamlit_cloud | web_studio | word_addin"
         varchar ip_hash
         timestamptz created_at
     }
@@ -187,21 +247,30 @@ erDiagram
 
 ---
 
-## 3. Structural Design Decisions
+## 3. Structural Design Decisions & Entities Breakdown
 
-### 3.1 Separation of `Document` and `Submission`
-* **`Document`** represents the mutable, working workspace where the researcher types, drafts, and applies revisions in real time.
+### 3.1 Academic AI Copilot & Paraphrase Decoupling
+* **`CopilotExecution`** decouples generative AI skill executions from deterministic grammar findings. It tracks which of the 12 skills was invoked, the active model (`gemini-2.5-flash` vs `local_deterministic_fallback`), and token metrics.
+* **`ParaphraseVariant`** records rewritten variations with their scientific rationales and explicit constraint checks (`citations_preserved = true`), ensuring academic citations like `(Vaswani et al., 2017)` remain untouched during sentence restructuring.
+
+### 3.2 Crossref Citation Management
+* **`CitationReference`** provides first-class storage for verified academic literature found through the Crossref REST API. It stores both raw metadata (DOI, authors, year) and pre-formatted citation strings (**APA 7th Edition** and **IEEE**), allowing authors to copy-paste formatted references instantly.
+
+### 3.3 Multi-Client Origin Awareness
+* Both **`Document`**, **`AnalysisReport`**, and **`AuditLog`** track `client_type` (`streamlit_cloud`, `web_studio`, `word_addin`), allowing diagnostic performance and usage analytics to be grouped across the three frontends without data silos.
+
+### 3.4 Separation of `Document` and `Submission`
+* **`Document`** represents the mutable, working workspace where the researcher types, drafts, and applies revisions in real time (stored in memory/localStorage for guests, or PostgreSQL for registered users).
 * **`Submission`** represents an immutable snapshot frozen at turn-in time (`submitted_at`). Even if the student subsequently edits their working document, the submitted assignment report and content remain auditable and verifiable by the instructor.
-
-### 3.2 Tenant Isolation & Authorization Boundary
-* **Student:** Can only read/edit their own documents and view submission reports for classes in which they are enrolled.
-* **Instructor:** Can create classes, publish assignments, inspect all student submissions within their enrolled classes, and provide inline feedback.
-* **Admin:** Manages institutional settings, users, and audit logs. Has zero access to read private draft document text without explicit authorization.
 
 ---
 
-## 4. Retention & Privacy Enforcement
+## 4. Retention, Privacy & Stateless Operations
 
-1. **Guest / Ephemeral Processing:** Unregistered user sessions remain stateless. No database records are written without user intent.
-2. **Audit Logs Without Document Leaks:** `AuditLog` records actor ID, action type, and resource UUID. Full text content is NEVER stored in audit logs.
-3. **Corpus Immutability:** User documents are NEVER ingested into the comparison corpus without verified institutional agreement and licensing.
+1. **Ephemeral Guest Processing (Streamlit Cloud & Web Studio):**
+   * For unregistered sessions, entities (`Document`, `AnalysisReport`, `GrammarFinding`, `CopilotExecution`, `ParaphraseVariant`) exist purely in-memory in the client runtime.
+   * `owner_id` is nullable across all tables, ensuring no foreign key constraint failures during guest usage.
+2. **Zero-Retention Audit Logging:**
+   * `AuditLog` captures only metadata (actor ID, action, resource UUID, client type, hashed IP). Manuscript text is **NEVER** stored in audit logs.
+3. **Corpus Immutability & Provenance:**
+   * `Source` contains only verified open-access literature (e.g. arXiv CC-BY, Mind, Bell Labs, DOAJ). User submissions are strictly partitioned and **NEVER** inserted into the comparison corpus without explicit written institutional licensing.
