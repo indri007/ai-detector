@@ -1,3 +1,28 @@
+import os
+import sys
+
+# Automatic forwarder: If executed via Streamlit Cloud (streamlit run backend/main.py)
+is_streamlit_run = any("streamlit" in str(arg).lower() for arg in sys.argv)
+if not is_streamlit_run:
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        if get_script_run_ctx() is not None:
+            is_streamlit_run = True
+    except Exception:
+        pass
+
+if is_streamlit_run:
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    app_file = os.path.join(root_dir, "app.py")
+    if not os.path.exists(app_file):
+        app_file = os.path.join(root_dir, "streamlit_app", "app.py")
+    if root_dir not in sys.path:
+        sys.path.insert(0, root_dir)
+    with open(app_file, "r", encoding="utf-8") as f:
+        code = compile(f.read(), app_file, 'exec')
+        exec(code, globals())
+    sys.exit(0)
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
