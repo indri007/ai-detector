@@ -14,6 +14,7 @@ interface LocalRule {
   severity: "error" | "warning" | "suggestion";
   pattern: RegExp;
   replacement: string;
+  suggestions?: string[];
   message: string;
   explanation: string;
   languages: LanguageCode[];
@@ -26,10 +27,55 @@ const LOCAL_ACADEMIC_RULES: LocalRule[] = [
     category: "grammar",
     severity: "warning",
     pattern: /\bdi\s+mana\b(?!\?)/gi,
-    replacement: "tempat / yang mana",
+    replacement: "tempat",
+    suggestions: ["tempat", "yang", "dalam hal tersebut"],
     message: "Kata 'di mana' sebagai kata penghubung kurang baku dalam penulisan ilmiah.",
     explanation: "Dalam bahasa Indonesia baku, 'di mana' adalah kata tanya tempat, bukan kata penghubung relatif (padanan 'where' bahasa Inggris). Gunakan 'tempat', 'yang', atau 'dalam hal tersebut'.",
     languages: ["id-ID"],
+  },
+  {
+    id: "ID_AI_MERUPAKAN_SUATU",
+    category: "style",
+    severity: "suggestion",
+    pattern: /\bmerupakan\s+suatu\b/gi,
+    replacement: "adalah",
+    suggestions: ["adalah", "berupa", "merupakan"],
+    message: "Frasa berulang/pleonasme: pertimbangkan alternatif kata yang lebih lugas.",
+    explanation: "Gunakan kata kerja kopula langsung untuk ketajaman naskah ilmiah.",
+    languages: ["id-ID"],
+  },
+  {
+    id: "ID_AI_SANGAT_PENTING",
+    category: "style",
+    severity: "suggestion",
+    pattern: /\bsangat\s+penting\b/gi,
+    replacement: "krusial",
+    suggestions: ["krusial", "fundamental", "esensial", "signifikan"],
+    message: "Alternatif kata ilmiah untuk frasa 'sangat penting'.",
+    explanation: "Tingkatkan ketepatan diksi dengan istilah ilmiah baku bertingkat tinggi.",
+    languages: ["id-ID"],
+  },
+  {
+    id: "EN_AI_DELVE",
+    category: "style",
+    severity: "suggestion",
+    pattern: /\bdelve(\s+into)?\b/gi,
+    replacement: "examine",
+    suggestions: ["examine", "investigate", "analyze", "explore"],
+    message: "Overused AI writing pattern: consider specific scholarly verbs.",
+    explanation: "Academic papers benefit from precise analytical verbs rather than generic cliches.",
+    languages: ["en-US", "en-GB"],
+  },
+  {
+    id: "EN_AI_PIVOTAL",
+    category: "style",
+    severity: "suggestion",
+    pattern: /\b(pivotal|crucial)\b/gi,
+    replacement: "critical",
+    suggestions: ["critical", "fundamental", "essential", "significant"],
+    message: "Academic word alternatives for generic intensifiers.",
+    explanation: "Select measured academic adjectives aligned with empirical rigor.",
+    languages: ["en-US", "en-GB"],
   },
   {
     id: "ID_DARIPADA_PERBANDINGAN",

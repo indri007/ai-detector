@@ -13,6 +13,7 @@ export interface GrammarFinding {
   endOffset: number;
   originalText: string;
   replacementText?: string;
+  suggestions?: string[];
   explanation?: string;
 }
 

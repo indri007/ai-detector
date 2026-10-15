@@ -89,7 +89,7 @@ def analyze_grammar_rules(text: str, language: str = "id-ID") -> List[Dict[str, 
     findings = []
     
     # 1. Indonesian Rules (PUEBI, KBBI & Academic Conventions)
-    if language == "id-ID":
+    if language.startswith("id"):
         kbbi_rules = [
             (r"\bpraktek\b", "praktik", "ID_SPELL_PRAKTEK", "Kata tidak baku menurut KBBI.", "Bentuk baku menurut Kamus Besar Bahasa Indonesia adalah 'praktik' (vokal i).", "spelling", "error"),
             (r"\banalisa\b", "analisis", "ID_SPELL_ANALISA", "Kata tidak baku menurut KBBI.", "Bentuk baku menurut KBBI adalah 'analisis' (akhiran -is).", "spelling", "error"),
@@ -125,7 +125,7 @@ def analyze_grammar_rules(text: str, language: str = "id-ID") -> List[Dict[str, 
                 })
 
     # 2. English Academic Rules
-    if language in ["en-US", "en-GB"]:
+    if language.startswith("en"):
         contractions = {
             "don't": "do not", "can't": "cannot", "won't": "will not",
             "isn't": "is not", "aren't": "are not", "doesn't": "does not",
@@ -192,6 +192,63 @@ def analyze_grammar_rules(text: str, language: str = "id-ID") -> List[Dict[str, 
 
     return findings
 
+# --- 2.1 AI Pattern & Academic Word Suggestion Detection ---
+def detect_ai_patterns(text: str, language: str = "id-ID") -> List[Dict[str, Any]]:
+    """
+    Detects characteristic AI patterns, overused cliches, PUEBI non-standard terms,
+    and provides multiple academic word replacement suggestions for interactive 1-click selection.
+    """
+    findings = []
+    
+    if language.startswith("id"):
+        patterns = [
+            (r"\bdi\s+mana\b(?!\?)", ["tempat", "yang", "dalam hal tersebut"], "Klausa Relatif AI/Kurang Baku", "Kata penghubung relatif 'di mana' kurang baku dalam naskah ilmiah formal."),
+            (r"\bmerupakan\s+suatu\b", ["adalah", "berupa", "merupakan"], "Pola Pleonasme AI", "Frasa 'merupakan suatu' dapat diringkas untuk ketajaman naskah."),
+            (r"\bsangat\s+penting\b", ["krusial", "fundamental", "esensial", "signifikan"], "Diksi Intensifier Umum", "Gunakan kata sifat akademik bertingkat tinggi daripada frasa umum."),
+            (r"\bdapat\s+disimpulkan\s+bahwa\b", ["temuan ini mengindikasikan bahwa", "data membuktikan bahwa", "analisis memperlihatkan bahwa"], "Klise Kesimpulan AI", "Gunakan pernyataan inferensial berbasis bukti empiris daripada klise."),
+            (r"\bpraktek\b", ["praktik"], "Ejaan PUEBI Non-Baku", "Gunakan bentuk baku PUEBI/KBBI 'praktik' (vokal i)."),
+            (r"\banalisa\b", ["analisis"], "Ejaan PUEBI Non-Baku", "Gunakan bentuk baku PUEBI/KBBI 'analisis' (akhiran -is)."),
+            (r"\bmerubah\b", ["mengubah", "mentransformasi", "menyesuaikan"], "Bentuk Kata Non-Baku", "Kata dasar 'ubah' mendapat awalan me- menjadi 'mengubah'."),
+            (r"\bsistim\b", ["sistem"], "Ejaan PUEBI Non-Baku", "Gunakan bentuk baku PUEBI/KBBI 'sistem' (vokal e)."),
+            (r"\bobyek\b", ["objek"], "Ejaan PUEBI Non-Baku", "Gunakan bentuk baku PUEBI/KBBI 'objek' (huruf j)."),
+            (r"\bresiko\b", ["risiko"], "Ejaan PUEBI Non-Baku", "Gunakan bentuk baku PUEBI/KBBI 'risiko' (vokal i)."),
+            (r"\btujuan\s+daripada\b", ["tujuan"], "Preposisi Rancu", "Gunakan 'tujuan' secara langsung tanpa preposisi 'daripada'."),
+            (r"\bdalam\s+rangka\s+untuk\b", ["untuk", "guna", "dalam rangka"], "Pleonasme Frasa", "Gunakan satu preposisi tujuan secara ringkas dan lugas."),
+            (r"\bmeneliti\s+tentang\b", ["meneliti", "mengkaji", "menginvestigasi"], "Rancu Preposisi Verba", "Verba transitif 'meneliti' langsung diikuti objek tanpa preposisi 'tentang'."),
+            (r"\bbanyak\s+sekali\b", ["beragam", "sejumlah besar", "banyak"], "Diksi Informal", "Gunakan frasa kuantifikasi akademik yang terukur.")
+        ]
+    else:
+        patterns = [
+            (r"\bdelve(\s+into)?\b", ["examine", "investigate", "analyze", "explore"], "AI Cliche: Delve", "Overused AI vocabulary; replace with specific empirical verbs."),
+            (r"\b(pivotal|crucial)\b", ["critical", "fundamental", "essential", "significant"], "AI Cliche: Overemphasis", "Replace generic intensifiers with measured scholarly adjectives."),
+            (r"\butilize\b", ["use", "apply", "employ"], "Academic Wordiness", "Prefer direct verbs like 'use' or 'apply'."),
+            (r"\bfoster\b", ["promote", "facilitate", "encourage", "cultivate"], "AI Cliche: Foster", "Provide diverse verbs instead of repeated 'foster'."),
+            (r"\brealm\s+of\b", ["domain of", "field of", "scope of"], "AI Cliche: Realm", "Replace figurative 'realm' with precise domain terminology."),
+            (r"\bmoreover\b", ["furthermore", "additionally", "in addition"], "Discourse Marker", "Provide varied discourse markers."),
+            (r"\btestament\s+to\b", ["evidence of", "indication of", "demonstration of"], "AI Metaphor", "Replace poetic idioms with empirical framing."),
+            (r"\b(don't|can't|won't)\b", ["do not", "cannot", "will not"], "Contraction", "Expand conversational contractions in formal research."),
+            (r"\bI\s+think\b", ["The evidence suggests", "Data indicates", "Prior studies demonstrate"], "Subjective Framing", "Replace first-person belief with objective academic framing."),
+            (r"\ba\s+lot\s+of\b", ["a substantial number of", "numerous", "extensive"], "Imprecise Quantifier", "Replace vague quantifiers with measured scholarly terms.")
+        ]
+        
+    for pattern, suggestions, cat, msg in patterns:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            findings.append({
+                "id": f"ai_pat_{match.start()}",
+                "word": match.group(0),
+                "original_text": match.group(0),
+                "start_offset": match.start(),
+                "end_offset": match.end(),
+                "category": cat,
+                "message": msg,
+                "replacement_text": suggestions[0] if suggestions else "",
+                "suggestions": suggestions,
+                "explanation": f"Pilihan alternatif: {', '.join(suggestions)}"
+            })
+            
+    findings.sort(key=lambda x: x["start_offset"])
+    return findings
+
 # --- 3. Shingle Similarity Engine against Open-Access Corpus ---
 def calculate_similarity_shingles(text: str, custom_corpus: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     corpus = OPEN_ACCESS_CORPUS if custom_corpus is None else OPEN_ACCESS_CORPUS + custom_corpus
@@ -245,7 +302,7 @@ def rewrite_academic_style(text: str, mode: str = "academic_formal", language: s
     rewritten = cleaned
     rationale = "Disesuaikan dengan standar penulisan ilmiah."
 
-    if language == "id-ID":
+    if language.startswith("id"):
         rewritten = re.sub(r"\bpraktek\b", "praktik", rewritten, flags=re.IGNORECASE)
         rewritten = re.sub(r"\banalisa\b", "analisis", rewritten, flags=re.IGNORECASE)
         rewritten = re.sub(r"\bsistim\b", "sistem", rewritten, flags=re.IGNORECASE)
@@ -353,38 +410,104 @@ def execute_academic_copilot(
     target_language: str = "id-ID",
     api_key: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Executes an academic skill via Gemini Flash or local deterministic rule fallback."""
-    key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY_1")
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-    
+    """Executes an academic skill via OpenRouter, OpenAI, Gemini, or local deterministic rule fallback."""
+    key = api_key or os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY_1")
+    sys_inst = SKILL_PROMPTS.get(skill_id, "You are an academic writing advisor.")
+    prompt = f"System: {sys_inst}\nTarget Language: {target_language}\nContext: {context}\n\nManuscript Input:\n{text}"
+
     if key:
-        try:
-            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
-            sys_inst = SKILL_PROMPTS.get(skill_id, "You are an academic writing advisor.")
-            prompt = f"System: {sys_inst}\nTarget Language: {target_language}\nContext: {context}\n\nManuscript Input:\n{text}"
-            
-            payload = {
-                "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048}
-            }
-            req = urllib.request.Request(
-                endpoint,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=12) as response:
-                res_data = json.loads(response.read().decode())
-                cand = res_data.get("candidates", [])[0]
-                content = cand.get("content", {}).get("parts", [])[0].get("text", "")
-                return {
-                    "success": True,
-                    "model_used": f"Google Gemini ({model})",
-                    "output": content,
-                    "provider": "Cloud AI (Gemini 2.5 Flash)"
+        # 1. OpenRouter Support
+        if key.startswith("sk-or-v1-") or os.getenv("OPENROUTER_API_KEY"):
+            try:
+                or_model = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3.5-lightning:free")
+                payload = {
+                    "model": or_model,
+                    "messages": [
+                        {"role": "system", "content": sys_inst},
+                        {"role": "user", "content": f"Target Language: {target_language}\nContext: {context}\n\nManuscript Input:\n{text}"}
+                    ],
+                    "temperature": 0.2
                 }
-        except Exception as e:
-            # Fallback to local deterministic execution
-            pass
+                req = urllib.request.Request(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={
+                        "Authorization": f"Bearer {key}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://ai-detector-best.streamlit.app",
+                        "X-Title": "AcademicWrite AI"
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    res_data = json.loads(resp.read().decode())
+                    content = res_data["choices"][0]["message"]["content"]
+                    return {
+                        "success": True,
+                        "model_used": f"OpenRouter ({or_model})",
+                        "output": content,
+                        "provider": "OpenRouter Cloud API"
+                    }
+            except Exception:
+                pass
+
+        # 2. OpenAI Support
+        elif key.startswith("sk-proj-") or (key.startswith("sk-") and not key.startswith("sk-or-")):
+            try:
+                oai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+                payload = {
+                    "model": oai_model,
+                    "messages": [
+                        {"role": "system", "content": sys_inst},
+                        {"role": "user", "content": f"Target Language: {target_language}\nContext: {context}\n\nManuscript Input:\n{text}"}
+                    ],
+                    "temperature": 0.2
+                }
+                req = urllib.request.Request(
+                    "https://api.openai.com/v1/chat/completions",
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={
+                        "Authorization": f"Bearer {key}",
+                        "Content-Type": "application/json"
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    res_data = json.loads(resp.read().decode())
+                    content = res_data["choices"][0]["message"]["content"]
+                    return {
+                        "success": True,
+                        "model_used": f"OpenAI ({oai_model})",
+                        "output": content,
+                        "provider": "OpenAI Cloud API"
+                    }
+            except Exception:
+                pass
+
+        # 3. Google Gemini Support
+        else:
+            try:
+                model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+                endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+                payload = {
+                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048}
+                }
+                req = urllib.request.Request(
+                    endpoint,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"}
+                )
+                with urllib.request.urlopen(req, timeout=12) as response:
+                    res_data = json.loads(response.read().decode())
+                    cand = res_data.get("candidates", [])[0]
+                    content = cand.get("content", {}).get("parts", [])[0].get("text", "")
+                    return {
+                        "success": True,
+                        "model_used": f"Google Gemini ({model})",
+                        "output": content,
+                        "provider": "Cloud AI (Gemini Flash)"
+                    }
+            except Exception:
+                pass
 
     # Intelligent Local Fallback
     local_rewrites = rewrite_academic_style(text, mode="academic_formal", language=target_language)

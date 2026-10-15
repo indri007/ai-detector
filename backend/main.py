@@ -138,5 +138,26 @@ def search_citations(q: str = Query(..., min_length=1)):
         return {"query": q, "total": 0, "results": [], "error": str(e)}
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    import sys
+    # Check if executed via Streamlit Cloud (e.g. streamlit run backend/main.py)
+    is_streamlit = any("streamlit" in str(arg).lower() for arg in sys.argv)
+    if not is_streamlit:
+        try:
+            from streamlit.runtime.scriptrunner import get_script_run_ctx
+            if get_script_run_ctx() is not None:
+                is_streamlit = True
+        except Exception:
+            pass
+
+    if is_streamlit:
+        import os
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        app_file = os.path.join(root_dir, "streamlit_app", "app.py")
+        if root_dir not in sys.path:
+            sys.path.insert(0, root_dir)
+        with open(app_file, "r", encoding="utf-8") as f:
+            code = compile(f.read(), app_file, 'exec')
+            exec(code, globals())
+    else:
+        import uvicorn
+        uvicorn.run(app, host="127.0.0.1", port=8000)

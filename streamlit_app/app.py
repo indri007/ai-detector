@@ -19,6 +19,7 @@ from backend.nlp_engine import (
     rewrite_academic_style,
     search_crossref_dois,
     execute_academic_copilot,
+    detect_ai_patterns,
     SKILL_PROMPTS
 )
 
@@ -72,9 +73,11 @@ st.markdown("""
 # Initialize Session State
 if "document_text" not in st.session_state:
     st.session_state.document_text = (
-        "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks. "
-        "However, the author don't believe that praktek tanpa analisa dan metode penelitian adalah solusi terbaik dalam rangka untuk mencapai hasil maksimal."
+        "Penelitian ini mengkaji praktek penulisan naskah ilmiah di mana banyak ditemukan analisa yang belum optimal. "
+        "Tujuan daripada riset ini adalah merubah pola penyusunan metodologi penelitian agar sesuai standar."
     )
+if "main_text_area" not in st.session_state:
+    st.session_state.main_text_area = st.session_state.document_text
 if "custom_corpus" not in st.session_state:
     st.session_state.custom_corpus = []
 if "chat_history" not in st.session_state:
@@ -101,22 +104,50 @@ with st.sidebar:
     
     # Retrieve API key from secrets, env, or user input
     default_key = ""
+    provider_detected = "Lokal (Offline)"
     try:
-        if "GEMINI_API_KEY" in st.secrets:
+        if "OPENROUTER_API_KEY" in st.secrets and st.secrets["OPENROUTER_API_KEY"]:
+            default_key = st.secrets["OPENROUTER_API_KEY"]
+            provider_detected = "OpenRouter (Cloud)"
+        elif "OPENAI_API_KEY" in st.secrets and st.secrets["OPENAI_API_KEY"]:
+            default_key = st.secrets["OPENAI_API_KEY"]
+            provider_detected = "OpenAI (Cloud)"
+        elif "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]:
             default_key = st.secrets["GEMINI_API_KEY"]
+            provider_detected = "Google Gemini (Cloud)"
     except Exception:
         pass
-    if not default_key:
-        default_key = os.getenv("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY_1", ""))
 
-    with st.expander("Konfigurasi Gemini AI", expanded=False):
+    if not default_key:
+        default_key = (
+            os.getenv("OPENROUTER_API_KEY") or 
+            os.getenv("OPENAI_API_KEY") or 
+            os.getenv("GEMINI_API_KEY") or 
+            os.getenv("GEMINI_API_KEY_1", "")
+        )
+        if default_key.startswith("sk-or-v1-"):
+            provider_detected = "OpenRouter (Cloud)"
+        elif default_key.startswith("sk-proj-") or default_key.startswith("sk-"):
+            provider_detected = "OpenAI (Cloud)"
+        elif default_key:
+            provider_detected = "Google Gemini (Cloud)"
+
+    with st.expander("Konfigurasi API AI (Cloud)", expanded=False):
         user_api_key = st.text_input(
-            "Google Gemini API Key:",
+            "API Key (OpenRouter / OpenAI / Gemini):",
             value=default_key,
             type="password",
-            help="Masukkan kunci Gemini API untuk mengaktifkan Copilot AI generatif penuh (Gemini 2.5 Flash)."
+            help="Mendukung OpenRouter (sk-or-v1-...), OpenAI (sk-proj-...), atau Google Gemini."
         )
-        st.caption("Jika dikosongkan, seluruh fitur tetap berjalan 100% menggunakan Mesin Deterministik Lokal.")
+        if user_api_key:
+            if user_api_key.startswith("sk-or-v1-"):
+                st.success("🟢 Provider: **OpenRouter (Free Tier / Multi-Model)**")
+            elif user_api_key.startswith("sk-proj-") or user_api_key.startswith("sk-"):
+                st.info("🔵 Provider: **OpenAI (GPT-4o-mini)**")
+            else:
+                st.info("🟣 Provider: **Google Gemini (Flash)**")
+        else:
+            st.caption("Jika dikosongkan, seluruh fitur Copilot tetap berjalan 100% menggunakan **Mesin Deterministik Lokal ($0.00)**.")
 
     st.markdown("---")
     st.markdown("### 🔒 Kebijakan Privasi & Keamanan")
@@ -158,26 +189,41 @@ with tab_editor:
         c_btn1, c_btn2, c_btn3 = st.columns([1, 1, 1])
         with c_btn1:
             if st.button("📄 Contoh Teks (ID)", use_container_width=True):
-                st.session_state.document_text = (
+                sample_id = (
                     "Penelitian ini mengkaji praktek penulisan naskah ilmiah di mana banyak ditemukan analisa yang belum optimal. "
                     "Tujuan daripada riset ini adalah merubah pola penyusunan metodologi penelitian agar sesuai standar."
                 )
+                st.session_state.document_text = sample_id
+                st.session_state.main_text_area = sample_id
+                st.session_state.analysis_results = {
+                    "findings": analyze_grammar_rules(sample_id, language),
+                    "ai_findings": detect_ai_patterns(sample_id, language),
+                    "sim_data": calculate_similarity_shingles(sample_id, custom_corpus=st.session_state.custom_corpus)
+                }
                 st.rerun()
         with c_btn2:
             if st.button("📄 Contoh Teks (EN)", use_container_width=True):
-                st.session_state.document_text = (
-                    "The dominant sequence transduction models are based on complex recurrent or convolutional neural networks. "
-                    "However, we can't ignore that I think a lot of researchers need better attention mechanisms."
+                sample_en = (
+                    "The dominant sequence transduction models are based on complex neural networks. "
+                    "However, we can't ignore that I think a lot of researchers need to delve into attention mechanisms to foster deeper insights."
                 )
+                st.session_state.document_text = sample_en
+                st.session_state.main_text_area = sample_en
+                st.session_state.analysis_results = {
+                    "findings": analyze_grammar_rules(sample_en, language),
+                    "ai_findings": detect_ai_patterns(sample_en, language),
+                    "sim_data": calculate_similarity_shingles(sample_en, custom_corpus=st.session_state.custom_corpus)
+                }
                 st.rerun()
         with c_btn3:
             if st.button("🗑️ Bersihkan Teks", use_container_width=True):
                 st.session_state.document_text = ""
+                st.session_state.main_text_area = ""
+                st.session_state.analysis_results = None
                 st.rerun()
 
         text_input = st.text_area(
             "Ketik atau tempel naskah artikel / tugas akhir di sini:",
-            value=st.session_state.document_text,
             height=380,
             key="main_text_area",
             help="Maksimal 20.000 karakter."
@@ -197,44 +243,143 @@ with tab_editor:
     with col_results:
         st.subheader("Hasil Pemeriksaan & Diagnostik")
         
+        # Initial run on load if not yet populated
+        if ("analysis_results" not in st.session_state or st.session_state.analysis_results is None) and text_input.strip():
+            st.session_state.analysis_results = {
+                "findings": analyze_grammar_rules(text_input, language),
+                "ai_findings": detect_ai_patterns(text_input, language),
+                "sim_data": calculate_similarity_shingles(text_input, custom_corpus=st.session_state.custom_corpus)
+            }
+
         if btn_run_analysis and text_input.strip():
             with st.spinner("Memproses tata bahasa, PUEBI, dan perbandingan korpus..."):
                 findings = analyze_grammar_rules(text_input, language)
+                ai_findings = detect_ai_patterns(text_input, language)
                 sim_data = calculate_similarity_shingles(text_input, custom_corpus=st.session_state.custom_corpus)
-                
-                # Metrics Cards
-                m1, m2, m3 = st.columns(3)
-                with m1:
-                    st.metric("Temuan Tata Bahasa", len(findings))
-                with m2:
-                    st.metric("Kemiripan Korpus", f"{sim_data['overall_percent']}%")
-                with m3:
-                    st.metric("Estimasi Baca", f"{reading_time} mnt")
+                st.session_state.analysis_results = {
+                    "findings": findings,
+                    "ai_findings": ai_findings,
+                    "sim_data": sim_data
+                }
 
-                # Quick action: Apply all corrections
-                if findings:
-                    with st.expander("⚡ Terapkan Semua Koreksi Otomatis"):
-                        corrected_text = text_input
-                        for f in findings:
-                            if f.get("replacement_text") and not "\\" in f["replacement_text"] and not "/" in f["replacement_text"]:
-                                corrected_text = re.sub(r"\b" + re.escape(f["original_text"]) + r"\b", f["replacement_text"], corrected_text, flags=re.IGNORECASE)
+        if st.session_state.get("analysis_results") and text_input.strip():
+            res = st.session_state.analysis_results
+            findings = res.get("findings", [])
+            ai_findings = res.get("ai_findings", [])
+            sim_data = res.get("sim_data", {"overall_percent": 0.0, "matched_sources": []})
+            
+            # Metrics Cards
+            m1, m2, m3 = st.columns(3)
+            with m1:
+                st.metric("Temuan Tata Bahasa", len(findings))
+            with m2:
+                st.metric("Saran Diksi & Pola AI", len(ai_findings))
+            with m3:
+                st.metric("Kemiripan Korpus", f"{sim_data['overall_percent']}%")
+
+            # 1. TAMPILAN BOLD & HIGHLIGHT KATA TERDETEKSI
+            if ai_findings:
+                with st.expander("🔍 Pratinjau Teks dengan Sorotan Kata (Bold & Highlight)", expanded=True):
+                    st.markdown("**Visualisasi Kata/Frasa yang Terdeteksi untuk Disempurnakan:**")
+                    highlighted_html = text_input
+                    # Process from end to start to preserve accurate character offsets
+                    indexed_findings = list(enumerate(ai_findings))
+                    sorted_findings = sorted(indexed_findings, key=lambda x: x[1]["start_offset"], reverse=True)
+                    for original_idx, af in sorted_findings:
+                        start, end = af["start_offset"], af["end_offset"]
+                        word = text_input[start:end]
+                        tag = (
+                            f"<span style='background-color:#FEF08A; color:#1E293B; font-weight:bold; "
+                            f"padding:2px 6px; border-radius:4px; border-bottom:2px solid #CA8A04;' "
+                            f"title='Saran #{original_idx+1}: {af['category']}'>"
+                            f"<sup style='color:#B45309; font-weight:800;'>[#{original_idx+1}]</sup> {word}</span>"
+                        )
+                        highlighted_html = highlighted_html[:start] + tag + highlighted_html[end:]
+                    st.markdown(
+                        f"<div style='background:#FFFFFF; border:1px solid #E2E8F0; padding:16px; "
+                        f"border-radius:12px; line-height:2.0; font-family:serif; font-size:16px;'>{highlighted_html}</div>",
+                        unsafe_allow_html=True
+                    )
+
+            # 2. KARTU REKOMENDASI PILIHAN KATA ALTERNATIF (ATOMIC REPLACEMENT)
+            st.markdown("#### 💡 Saran Alternatif Kata (Interactive Suggestion Cards)")
+            if not ai_findings:
+                st.info("ℹ️ Tidak ditemukan pola klise AI atau istilah yang memerlukan variasi kata.")
+            else:
+                for idx, af in enumerate(ai_findings):
+                    with st.container():
+                        st.markdown(
+                            f"**[#{idx+1}] [{af['category']}]** Kata Terdeteksi: "
+                            f"<span style='background:#FEF2F2; color:#991B1B; font-weight:bold; padding:2px 6px; border-radius:4px;'>{af['word']}</span> "
+                            f"*(offset {af['start_offset']}-{af['end_offset']})*",
+                            unsafe_allow_html=True
+                        )
                         
-                        st.text_area("Pratinjau Hasil Koreksi:", value=corrected_text, height=140)
-                        if st.button("✅ Simpan Hasil Koreksi ke Editor"):
-                            st.session_state.document_text = corrected_text
-                            st.rerun()
+                        # Extract contextual snippet around detected word
+                        ctx_start = max(0, af["start_offset"] - 35)
+                        ctx_end = min(len(text_input), af["end_offset"] + 35)
+                        ctx_before = text_input[ctx_start:af["start_offset"]].replace("<", "&lt;").replace(">", "&gt;")
+                        ctx_after = text_input[af["end_offset"]:ctx_end].replace("<", "&lt;").replace(">", "&gt;")
+                        prefix = "..." if ctx_start > 0 else ""
+                        suffix = "..." if ctx_end < len(text_input) else ""
+                        ctx_html = f"<i>{prefix}{ctx_before}</i><b style='color:#B91C1C; background:#FEE2E2; padding:1px 5px; border-radius:3px;'>{af['word']}</b><i>{ctx_after}{suffix}</i>"
+                        
+                        st.markdown(
+                            f"<div style='background:#F8FAFC; border-left:4px solid #3B82F6; padding:8px 12px; border-radius:6px; margin:6px 0; font-size:13px;'>"
+                            f"<b>Konteks Kalimat:</b> {ctx_html}<br/>"
+                            f"<span style='color:#475569;'>💡 {af['message']}</span>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+                        
+                        st.markdown("**Pilih Kata Pengganti Langsung (1-Click Atomic Replace):**")
+                        sug_cols = st.columns(max(len(af["suggestions"]), 1))
+                        for c_idx, sug in enumerate(af["suggestions"]):
+                            with sug_cols[c_idx]:
+                                if st.button(f"➔ {sug}", key=f"btn_sug_{af['id']}_{sug}_{idx}", use_container_width=True):
+                                    # Atomic String Replacement pada indeks karakter tepat
+                                    before = text_input[:af["start_offset"]]
+                                    after = text_input[af["end_offset"]:]
+                                    new_doc = before + sug + after
+                                    st.session_state.document_text = new_doc
+                                    st.session_state.main_text_area = new_doc
+                                    
+                                    # Refresh findings with updated text
+                                    st.session_state.analysis_results = {
+                                        "findings": analyze_grammar_rules(new_doc, language),
+                                        "ai_findings": detect_ai_patterns(new_doc, language),
+                                        "sim_data": sim_data
+                                    }
+                                    st.toast(f"✅ Berhasil mengganti '{af['word']}' dengan '{sug}'!")
+                                    st.rerun()
+                        st.markdown("---")
 
-                # Grammar Findings Detail
-                st.markdown("#### ✍️ Saran Tata Bahasa, Ejaan & Gaya")
-                if not findings:
-                    st.success("🎉 Tidak ditemukan kesalahan tata bahasa, ejaan baku, atau kontradiksi gaya pada teks Anda!")
-                else:
-                    for idx, f in enumerate(findings):
-                        with st.expander(f"⚠️ [{f['category'].upper()}] {f['original_text']} → {f.get('replacement_text', 'Periksa')}"):
-                            st.markdown(f"**Pesan:** {f['message']}")
-                            if f.get("explanation"):
-                                st.caption(f['explanation'])
-                            st.caption(f"Tingkat Keparahan: `{f['severity']}` | Rule ID: `{f['rule_id']}`")
+            # Quick action: Apply all grammar corrections
+            if findings:
+                with st.expander("⚡ Terapkan Semua Koreksi Ejaan Otomatis"):
+                    corrected_text = text_input
+                    for f in findings:
+                        if f.get("replacement_text") and not "\\" in f["replacement_text"] and not "/" in f["replacement_text"]:
+                            corrected_text = re.sub(r"\b" + re.escape(f["original_text"]) + r"\b", f["replacement_text"], corrected_text, flags=re.IGNORECASE)
+                    
+                    st.text_area("Pratinjau Hasil Koreksi:", value=corrected_text, height=140)
+                    if st.button("✅ Simpan Hasil Koreksi ke Editor"):
+                        st.session_state.document_text = corrected_text
+                        st.session_state.main_text_area = corrected_text
+                        st.session_state.analysis_results = None
+                        st.rerun()
+
+            # Grammar Findings Detail
+            st.markdown("#### ✍️ Saran Tata Bahasa & PUEBI")
+            if not findings:
+                st.success("🎉 Tidak ditemukan kesalahan tata bahasa baku pada teks Anda!")
+            else:
+                for idx, f in enumerate(findings):
+                    with st.expander(f"⚠️ [{f['category'].upper()}] {f['original_text']} → {f.get('replacement_text', 'Periksa')}"):
+                        st.markdown(f"**Pesan:** {f['message']}")
+                        if f.get("explanation"):
+                            st.caption(f['explanation'])
+                        st.caption(f"Tingkat Keparahan: `{f['severity']}` | Rule ID: `{f['rule_id']}`")
 
                 # Similarity Findings Detail
                 st.markdown("#### 📊 Laporan Kemiripan Korpus Terbuka")
