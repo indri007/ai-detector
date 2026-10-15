@@ -23,12 +23,51 @@ from backend.nlp_engine import (
 )
 
 # --- Streamlit Page Configuration ---
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+logo_path = os.path.join(APP_DIR, "logo_3d_material3.jpg")
+
 st.set_page_config(
-    page_title="AcademicWrite AI — Academic Writing & Intelligence Platform",
-    page_icon="🎓",
+    page_title="AcademicWrite AI — Studio Penulisan Ilmiah",
+    page_icon=logo_path if os.path.exists(logo_path) else "🎓",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# --- Material Design 3 Styling Injection ---
+st.markdown("""
+<style>
+  /* Material 3 Global Font and Base Styling */
+  .stApp {
+    background-color: #FDFBFF;
+    font-family: 'Inter', -apple-system, sans-serif;
+  }
+  /* M3 Rounded Container Cards */
+  div[data-testid="stExpander"], div[data-testid="stForm"], .stMetric {
+    background-color: #F8F9FD !important;
+    border-radius: 16px !important;
+    border: 1px solid #E1E2EC !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+  }
+  /* Primary Action Buttons */
+  button[kind="primary"] {
+    background-color: #1A73E8 !important;
+    border-radius: 9999px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.25) !important;
+    transition: all 0.2s ease !important;
+  }
+  button[kind="primary"]:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 16px rgba(26, 115, 232, 0.35) !important;
+  }
+  /* Tabs Styling */
+  button[data-baseweb="tab"] {
+    border-radius: 12px 12px 0 0 !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+  }
+</style>
+""", unsafe_allow_html=True)
 
 # Initialize Session State
 if "document_text" not in st.session_state:
@@ -84,12 +123,18 @@ with st.sidebar:
     st.info("Seluruh analisis teks dieksekusi secara mandiri. Naskah Anda tidak disimpan permanen atau dibagikan ke pihak ketiga.")
     st.caption("v1.2.0 • Cloud Ready • Local NLP Enabled")
 
-# --- Header Banner ---
-st.title("Studio Penulisan & Kecerdasan Akademik")
-st.markdown(
-    "Platform asistensi penulisan karya ilmiah: tata bahasa & PUEBI, parafrase gaya akademik, "
-    "pemeriksaan kemiripan naskah berbasis korpus terbuka berizin, dan pencarian referensi resmi Crossref."
-)
+# --- Header Banner with 3D Material 3 Logo ---
+col_logo, col_header = st.columns([1, 6])
+with col_logo:
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=115)
+with col_header:
+    st.title("Studio Penulisan & Kecerdasan Akademik")
+    st.markdown(
+        "**Google Material Design 3 Edition** • Platform asistensi penulisan karya ilmiah: tata bahasa & PUEBI, parafrase gaya akademik, "
+        "pemeriksaan kemiripan naskah berbasis korpus terbuka berizin, dan pencarian referensi resmi Crossref."
+    )
+st.markdown("---")
 
 # --- Workspace Tabs ---
 tab_editor, tab_rewrite, tab_copilot, tab_citations, tab_corpus = st.tabs([
