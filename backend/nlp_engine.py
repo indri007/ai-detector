@@ -534,3 +534,18 @@ def execute_academic_copilot(
         "provider": "Local Offline Engine"
     }
 
+# --- 7. Streamlit Cloud Direct Execution Interceptor ---
+if __name__ == "__main__":
+    import sys
+    # If Streamlit Cloud runs 'streamlit run backend/nlp_engine.py'
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    app_file = os.path.join(root_dir, "app.py")
+    if not os.path.exists(app_file):
+        app_file = os.path.join(root_dir, "streamlit_app", "app.py")
+    if root_dir not in sys.path:
+        sys.path.insert(0, root_dir)
+    with open(app_file, "r", encoding="utf-8") as f:
+        code = compile(f.read(), app_file, 'exec')
+        exec(code, globals())
+
+
