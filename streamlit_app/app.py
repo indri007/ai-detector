@@ -29,7 +29,7 @@ logo_path = os.path.join(APP_DIR, "logo_3d_material3.jpg")
 
 st.set_page_config(
     page_title="AcademicWrite AI — Studio Penulisan Ilmiah",
-    page_icon=logo_path if os.path.exists(logo_path) else "🎓",
+    page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded"
 )

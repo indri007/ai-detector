@@ -1,17 +1,614 @@
+import streamlit as st
 import os
 import sys
+import re
+import json
 
-# Ensure root directory and streamlit_app are on sys.path
-root_dir = os.path.dirname(os.path.abspath(__file__))
-if root_dir not in sys.path:
-    sys.path.insert(0, root_dir)
+# Ensure parent and current directories are on sys.path for direct module import
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
 
-app_dir = os.path.join(root_dir, "streamlit_app")
-if app_dir not in sys.path:
-    sys.path.insert(0, app_dir)
+from backend.nlp_engine import (
+    OPEN_ACCESS_CORPUS,
+    analyze_grammar_rules,
+    calculate_similarity_shingles,
+    rewrite_academic_style,
+    search_crossref_dois,
+    execute_academic_copilot,
+    detect_ai_patterns,
+    SKILL_PROMPTS
+)
 
-# Forward execution directly to streamlit_app/app.py
-app_file = os.path.join(app_dir, "app.py")
-with open(app_file, "r", encoding="utf-8") as f:
-    code = compile(f.read(), app_file, 'exec')
-    exec(code, globals())
+# --- Streamlit Page Configuration ---
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+logo_path = os.path.join(APP_DIR, "logo_3d_material3.jpg")
+
+st.set_page_config(
+    page_title="AcademicWrite AI — Studio Penulisan Ilmiah",
+    page_icon="🎓",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# --- Material Design 3 Styling Injection ---
+st.markdown("""
+<style>
+  /* Material 3 Global Font and Base Styling */
+  .stApp {
+    background-color: #FDFBFF;
+    font-family: 'Inter', -apple-system, sans-serif;
+  }
+  /* M3 Rounded Container Cards */
+  div[data-testid="stExpander"], div[data-testid="stForm"], .stMetric {
+    background-color: #F8F9FD !important;
+    border-radius: 16px !important;
+    border: 1px solid #E1E2EC !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+  }
+  /* Primary Action Buttons */
+  button[kind="primary"] {
+    background-color: #1A73E8 !important;
+    border-radius: 9999px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.25) !important;
+    transition: all 0.2s ease !important;
+  }
+  button[kind="primary"]:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 16px rgba(26, 115, 232, 0.35) !important;
+  }
+  /* Tabs Styling */
+  button[data-baseweb="tab"] {
+    border-radius: 12px 12px 0 0 !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+  }
+</style>
+""", unsafe_allow_html=True)
+
+# Initialize Session State
+if "document_text" not in st.session_state:
+    st.session_state.document_text = (
+        "Penelitian ini mengkaji praktek penulisan naskah ilmiah di mana banyak ditemukan analisa yang belum optimal. "
+        "Tujuan daripada riset ini adalah merubah pola penyusunan metodologi penelitian agar sesuai standar."
+    )
+if "main_text_area" not in st.session_state:
+    st.session_state.main_text_area = st.session_state.document_text
+if "custom_corpus" not in st.session_state:
+    st.session_state.custom_corpus = []
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+# --- Sidebar Configuration ---
+with st.sidebar:
+    logo_path = os.path.join(APP_DIR, "logo_3d_material3.jpg")
+    if os.path.exists(logo_path):
+        st.image(logo_path, use_container_width=True)
+    st.title("🎓 AcademicWrite AI")
+    st.caption("Material 3 • Academic Writing & Intelligence Platform")
+    st.markdown("---")
+    
+    st.markdown("### 🌐 Pengaturan Bahasa")
+    language = st.selectbox(
+        "Bahasa Naskah:",
+        options=["id-ID", "en-US", "en-GB"],
+        format_func=lambda x: "🇮🇩 Bahasa Indonesia (PUEBI/KBBI)" if x == "id-ID" else ("🇺🇸 English (US Scholarly)" if x == "en-US" else "🇬🇧 English (UK Scholarly)")
+    )
+    
+    st.markdown("---")
+    st.markdown("### 🔑 Kunci API AI (Opsional)")
+    
+    # Retrieve API key from secrets, env, or user input
+    default_key = ""
+    provider_detected = "Lokal (Offline)"
+    try:
+        if "OPENROUTER_API_KEY" in st.secrets and st.secrets["OPENROUTER_API_KEY"]:
+            default_key = st.secrets["OPENROUTER_API_KEY"]
+            provider_detected = "OpenRouter (Cloud)"
+        elif "OPENAI_API_KEY" in st.secrets and st.secrets["OPENAI_API_KEY"]:
+            default_key = st.secrets["OPENAI_API_KEY"]
+            provider_detected = "OpenAI (Cloud)"
+        elif "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]:
+            default_key = st.secrets["GEMINI_API_KEY"]
+            provider_detected = "Google Gemini (Cloud)"
+    except Exception:
+        pass
+
+    if not default_key:
+        default_key = (
+            os.getenv("OPENROUTER_API_KEY") or 
+            os.getenv("OPENAI_API_KEY") or 
+            os.getenv("GEMINI_API_KEY") or 
+            os.getenv("GEMINI_API_KEY_1", "")
+        )
+        if default_key.startswith("sk-or-v1-"):
+            provider_detected = "OpenRouter (Cloud)"
+        elif default_key.startswith("sk-proj-") or default_key.startswith("sk-"):
+            provider_detected = "OpenAI (Cloud)"
+        elif default_key:
+            provider_detected = "Google Gemini (Cloud)"
+
+    with st.expander("Konfigurasi API AI (Cloud)", expanded=False):
+        user_api_key = st.text_input(
+            "API Key (OpenRouter / OpenAI / Gemini):",
+            value=default_key,
+            type="password",
+            help="Mendukung OpenRouter (sk-or-v1-...), OpenAI (sk-proj-...), atau Google Gemini."
+        )
+        if user_api_key:
+            if user_api_key.startswith("sk-or-v1-"):
+                st.success("🟢 Provider: **OpenRouter (Free Tier / Multi-Model)**")
+            elif user_api_key.startswith("sk-proj-") or user_api_key.startswith("sk-"):
+                st.info("🔵 Provider: **OpenAI (GPT-4o-mini)**")
+            else:
+                st.info("🟣 Provider: **Google Gemini (Flash)**")
+        else:
+            st.caption("Jika dikosongkan, seluruh fitur Copilot tetap berjalan 100% menggunakan **Mesin Deterministik Lokal ($0.00)**.")
+
+    st.markdown("---")
+    st.markdown("### 🔒 Kebijakan Privasi & Keamanan")
+    st.info("Seluruh analisis teks dieksekusi secara mandiri. Naskah Anda tidak disimpan permanen atau dibagikan ke pihak ketiga.")
+    st.caption("v1.2.0 • Cloud Ready • Local NLP Enabled")
+
+# --- Header Banner with 3D Material 3 Logo ---
+col_logo, col_header = st.columns([1, 6])
+with col_logo:
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=115)
+with col_header:
+    st.title("Studio Penulisan & Kecerdasan Akademik")
+    st.markdown(
+        "**Google Material Design 3 Edition** • Platform asistensi penulisan karya ilmiah: tata bahasa & PUEBI, parafrase gaya akademik, "
+        "pemeriksaan kemiripan naskah berbasis korpus terbuka berizin, dan pencarian referensi resmi Crossref."
+    )
+st.markdown("---")
+
+# --- Workspace Tabs ---
+tab_editor, tab_rewrite, tab_copilot, tab_citations, tab_corpus = st.tabs([
+    "📝 Editor & Analisis Lengkap",
+    "✍️ Parafrase & Gaya Akademik",
+    "🤖 Academic AI Copilot (12 Skills)",
+    "📚 Pencarian DOI & Referensi",
+    "🏛️ Korpus Ilmiah Terindeks"
+])
+
+# ==============================================================================
+# TAB 1: Editor & Analisis Lengkap
+# ==============================================================================
+with tab_editor:
+    col_input, col_results = st.columns([1.15, 1])
+    
+    with col_input:
+        st.subheader("Naskah Akademik")
+        
+        # Sample buttons
+        c_btn1, c_btn2, c_btn3 = st.columns([1, 1, 1])
+        with c_btn1:
+            if st.button("📄 Contoh Teks (ID)", use_container_width=True):
+                sample_id = (
+                    "Penelitian ini mengkaji praktek penulisan naskah ilmiah di mana banyak ditemukan analisa yang belum optimal. "
+                    "Tujuan daripada riset ini adalah merubah pola penyusunan metodologi penelitian agar sesuai standar."
+                )
+                st.session_state.document_text = sample_id
+                st.session_state.main_text_area = sample_id
+                st.session_state.analysis_results = {
+                    "findings": analyze_grammar_rules(sample_id, language),
+                    "ai_findings": detect_ai_patterns(sample_id, language),
+                    "sim_data": calculate_similarity_shingles(sample_id, custom_corpus=st.session_state.custom_corpus)
+                }
+                st.rerun()
+        with c_btn2:
+            if st.button("📄 Contoh Teks (EN)", use_container_width=True):
+                sample_en = (
+                    "The dominant sequence transduction models are based on complex neural networks. "
+                    "However, we can't ignore that I think a lot of researchers need to delve into attention mechanisms to foster deeper insights."
+                )
+                st.session_state.document_text = sample_en
+                st.session_state.main_text_area = sample_en
+                st.session_state.analysis_results = {
+                    "findings": analyze_grammar_rules(sample_en, language),
+                    "ai_findings": detect_ai_patterns(sample_en, language),
+                    "sim_data": calculate_similarity_shingles(sample_en, custom_corpus=st.session_state.custom_corpus)
+                }
+                st.rerun()
+        with c_btn3:
+            if st.button("🗑️ Bersihkan Teks", use_container_width=True):
+                st.session_state.document_text = ""
+                st.session_state.main_text_area = ""
+                st.session_state.analysis_results = None
+                st.rerun()
+
+        text_input = st.text_area(
+            "Ketik atau tempel naskah artikel / tugas akhir di sini:",
+            height=380,
+            key="main_text_area",
+            help="Maksimal 20.000 karakter."
+        )
+        st.session_state.document_text = text_input
+
+        # Live Word/Char Metrics
+        raw_words = text_input.strip().split() if text_input.strip() else []
+        word_count = len(raw_words)
+        char_count = len(text_input)
+        reading_time = max(1, (word_count + 199) // 200)
+
+        st.caption(f"📊 **Statistik Dokumen:** **{word_count}** kata | **{char_count}** karakter | ~**{reading_time}** menit estimasi baca")
+        
+        btn_run_analysis = st.button("🔍 Jalankan Pemeriksaan Komprehensif", type="primary", use_container_width=True)
+
+    with col_results:
+        st.subheader("Hasil Pemeriksaan & Diagnostik")
+        
+        # Initial run on load if not yet populated
+        if ("analysis_results" not in st.session_state or st.session_state.analysis_results is None) and text_input.strip():
+            st.session_state.analysis_results = {
+                "findings": analyze_grammar_rules(text_input, language),
+                "ai_findings": detect_ai_patterns(text_input, language),
+                "sim_data": calculate_similarity_shingles(text_input, custom_corpus=st.session_state.custom_corpus)
+            }
+
+        if btn_run_analysis and text_input.strip():
+            with st.spinner("Memproses tata bahasa, PUEBI, dan perbandingan korpus..."):
+                findings = analyze_grammar_rules(text_input, language)
+                ai_findings = detect_ai_patterns(text_input, language)
+                sim_data = calculate_similarity_shingles(text_input, custom_corpus=st.session_state.custom_corpus)
+                st.session_state.analysis_results = {
+                    "findings": findings,
+                    "ai_findings": ai_findings,
+                    "sim_data": sim_data
+                }
+
+        if st.session_state.get("analysis_results") and text_input.strip():
+            res = st.session_state.analysis_results
+            findings = res.get("findings", [])
+            ai_findings = res.get("ai_findings", [])
+            sim_data = res.get("sim_data", {"overall_percent": 0.0, "matched_sources": []})
+            
+            # Metrics Cards
+            m1, m2, m3 = st.columns(3)
+            with m1:
+                st.metric("Temuan Tata Bahasa", len(findings))
+            with m2:
+                st.metric("Saran Diksi & Pola AI", len(ai_findings))
+            with m3:
+                st.metric("Kemiripan Korpus", f"{sim_data['overall_percent']}%")
+
+            # 1. TAMPILAN BOLD & HIGHLIGHT KATA TERDETEKSI
+            if ai_findings:
+                with st.expander("🔍 Pratinjau Teks dengan Sorotan Kata (Bold & Highlight)", expanded=True):
+                    st.markdown("**Visualisasi Kata/Frasa yang Terdeteksi untuk Disempurnakan:**")
+                    highlighted_html = text_input
+                    # Process from end to start to preserve accurate character offsets
+                    indexed_findings = list(enumerate(ai_findings))
+                    sorted_findings = sorted(indexed_findings, key=lambda x: x[1]["start_offset"], reverse=True)
+                    for original_idx, af in sorted_findings:
+                        start, end = af["start_offset"], af["end_offset"]
+                        word = text_input[start:end]
+                        tag = (
+                            f"<span style='background-color:#FEF08A; color:#1E293B; font-weight:bold; "
+                            f"padding:2px 6px; border-radius:4px; border-bottom:2px solid #CA8A04;' "
+                            f"title='Saran #{original_idx+1}: {af['category']}'>"
+                            f"<sup style='color:#B45309; font-weight:800;'>[#{original_idx+1}]</sup> {word}</span>"
+                        )
+                        highlighted_html = highlighted_html[:start] + tag + highlighted_html[end:]
+                    st.markdown(
+                        f"<div style='background:#FFFFFF; border:1px solid #E2E8F0; padding:16px; "
+                        f"border-radius:12px; line-height:2.0; font-family:serif; font-size:16px;'>{highlighted_html}</div>",
+                        unsafe_allow_html=True
+                    )
+
+            # 2. KARTU REKOMENDASI PILIHAN KATA ALTERNATIF (ATOMIC REPLACEMENT)
+            st.markdown("#### 💡 Saran Alternatif Kata (Interactive Suggestion Cards)")
+            if not ai_findings:
+                st.info("ℹ️ Tidak ditemukan pola klise AI atau istilah yang memerlukan variasi kata.")
+            else:
+                for idx, af in enumerate(ai_findings):
+                    with st.container():
+                        st.markdown(
+                            f"**[#{idx+1}] [{af['category']}]** Kata Terdeteksi: "
+                            f"<span style='background:#FEF2F2; color:#991B1B; font-weight:bold; padding:2px 6px; border-radius:4px;'>{af['word']}</span> "
+                            f"*(offset {af['start_offset']}-{af['end_offset']})*",
+                            unsafe_allow_html=True
+                        )
+                        
+                        # Extract contextual snippet around detected word
+                        ctx_start = max(0, af["start_offset"] - 35)
+                        ctx_end = min(len(text_input), af["end_offset"] + 35)
+                        ctx_before = text_input[ctx_start:af["start_offset"]].replace("<", "&lt;").replace(">", "&gt;")
+                        ctx_after = text_input[af["end_offset"]:ctx_end].replace("<", "&lt;").replace(">", "&gt;")
+                        prefix = "..." if ctx_start > 0 else ""
+                        suffix = "..." if ctx_end < len(text_input) else ""
+                        ctx_html = f"<i>{prefix}{ctx_before}</i><b style='color:#B91C1C; background:#FEE2E2; padding:1px 5px; border-radius:3px;'>{af['word']}</b><i>{ctx_after}{suffix}</i>"
+                        
+                        st.markdown(
+                            f"<div style='background:#F8FAFC; border-left:4px solid #3B82F6; padding:8px 12px; border-radius:6px; margin:6px 0; font-size:13px;'>"
+                            f"<b>Konteks Kalimat:</b> {ctx_html}<br/>"
+                            f"<span style='color:#475569;'>💡 {af['message']}</span>"
+                            f"</div>",
+                            unsafe_allow_html=True
+                        )
+                        
+                        st.markdown("**Pilih Kata Pengganti Langsung (1-Click Atomic Replace):**")
+                        sug_cols = st.columns(max(len(af["suggestions"]), 1))
+                        for c_idx, sug in enumerate(af["suggestions"]):
+                            with sug_cols[c_idx]:
+                                if st.button(f"➔ {sug}", key=f"btn_sug_{af['id']}_{sug}_{idx}", use_container_width=True):
+                                    # Atomic String Replacement pada indeks karakter tepat
+                                    before = text_input[:af["start_offset"]]
+                                    after = text_input[af["end_offset"]:]
+                                    new_doc = before + sug + after
+                                    st.session_state.document_text = new_doc
+                                    st.session_state.main_text_area = new_doc
+                                    
+                                    # Refresh findings with updated text
+                                    st.session_state.analysis_results = {
+                                        "findings": analyze_grammar_rules(new_doc, language),
+                                        "ai_findings": detect_ai_patterns(new_doc, language),
+                                        "sim_data": sim_data
+                                    }
+                                    st.toast(f"✅ Berhasil mengganti '{af['word']}' dengan '{sug}'!")
+                                    st.rerun()
+                        st.markdown("---")
+
+            # Quick action: Apply all grammar corrections
+            if findings:
+                with st.expander("⚡ Terapkan Semua Koreksi Ejaan Otomatis"):
+                    corrected_text = text_input
+                    for f in findings:
+                        if f.get("replacement_text") and not "\\" in f["replacement_text"] and not "/" in f["replacement_text"]:
+                            corrected_text = re.sub(r"\b" + re.escape(f["original_text"]) + r"\b", f["replacement_text"], corrected_text, flags=re.IGNORECASE)
+                    
+                    st.text_area("Pratinjau Hasil Koreksi:", value=corrected_text, height=140)
+                    if st.button("✅ Simpan Hasil Koreksi ke Editor"):
+                        st.session_state.document_text = corrected_text
+                        st.session_state.main_text_area = corrected_text
+                        st.session_state.analysis_results = None
+                        st.rerun()
+
+            # Grammar Findings Detail
+            st.markdown("#### ✍️ Saran Tata Bahasa & PUEBI")
+            if not findings:
+                st.success("🎉 Tidak ditemukan kesalahan tata bahasa baku pada teks Anda!")
+            else:
+                for idx, f in enumerate(findings):
+                    with st.expander(f"⚠️ [{f['category'].upper()}] {f['original_text']} → {f.get('replacement_text', 'Periksa')}"):
+                        st.markdown(f"**Pesan:** {f['message']}")
+                        if f.get("explanation"):
+                            st.caption(f['explanation'])
+                        st.caption(f"Tingkat Keparahan: `{f['severity']}` | Rule ID: `{f['rule_id']}`")
+
+                # Similarity Findings Detail
+                st.markdown("#### 📊 Laporan Kemiripan Korpus Terbuka")
+                st.caption(sim_data.get("disclaimer", ""))
+                
+                sources = sim_data.get("matched_sources", [])
+                if not sources:
+                    st.info("ℹ️ Tidak ditemukan kecocokan 5-gram yang signifikan dengan korpus terbuka terindeks.")
+                else:
+                    for src in sources:
+                        st.markdown(f"**[{src['match_percent']}%]** [{src['title']}]({src['url']}) — *{src['authors']} ({src.get('year', 'n.d.')})*")
+                        st.caption(f"Lisensi: `{src.get('license', 'Open Access')}`")
+                        for p in src.get("matched_passages", []):
+                            st.code(p, language="text")
+
+                # Export Analysis Report
+                st.markdown("---")
+                report_content = f"# Laporan Diagnostik AcademicWrite AI\n\n"
+                report_content += f"- **Jumlah Kata:** {word_count}\n- **Jumlah Karakter:** {char_count}\n"
+                report_content += f"- **Temuan Tata Bahasa:** {len(findings)}\n- **Kemiripan Korpus:** {sim_data['overall_percent']}%\n\n"
+                report_content += "## Temuan Tata Bahasa & Ejaan\n"
+                for f in findings:
+                    report_content += f"- [{f['category'].upper()}] {f['original_text']} -> {f.get('replacement_text', '')}: {f['message']}\n"
+                report_content += "\n## Sumber Korpus Terkait\n"
+                for src in sources:
+                    report_content += f"- [{src['match_percent']}%] {src['title']} ({src['authors']})\n"
+
+                st.download_button(
+                    label="📥 Unduh Laporan Diagnostik (.md)",
+                    data=report_content,
+                    file_name="laporan_analisis_akademik.md",
+                    mime="text/markdown"
+                )
+        elif not text_input.strip():
+            st.info("Silakan ketik atau tempel naskah Anda di kolom sebelah kiri, lalu klik tombol 'Jalankan Pemeriksaan Komprehensif'.")
+
+# ==============================================================================
+# TAB 2: Parafrase & Gaya Akademik
+# ==============================================================================
+with tab_rewrite:
+    st.subheader("Parafrase & Penyempurnaan Gaya Akademik")
+    st.markdown("Ubah kalimat informal, bertele-tele, atau kurang objektif menjadi kalimat akademik yang presisi.")
+    
+    col_rw_in, col_rw_out = st.columns(2)
+    
+    with col_rw_in:
+        rewrite_input = st.text_area(
+            "Teks yang ingin disempurnakan:",
+            value=st.session_state.document_text[:800] if st.session_state.document_text else "",
+            height=200,
+            help="Masukkan satu atau beberapa kalimat."
+        )
+        
+        mode_choice = st.radio(
+            "Pilih Mode Gaya:",
+            options=["academic_formal", "concise"],
+            format_func=lambda x: "🎓 Akademik Baku (Formal & Objektif)" if x == "academic_formal" else "⚡ Lugas & Ringkas (Concise)"
+        )
+        
+        btn_rewrite = st.button("✨ Tulis Ulang Teks", type="primary")
+
+    with col_rw_out:
+        st.markdown("#### Hasil Saran Penulisan:")
+        if btn_rewrite and rewrite_input.strip():
+            res_rewrite = rewrite_academic_style(rewrite_input, mode=mode_choice, language=language)
+            st.success("Teks berhasil disempurnakan:")
+            st.text_area("Saran Kalimat Baru:", value=res_rewrite["suggested"], height=160)
+            st.info(f"💡 **Rasional Perubahan:** {res_rewrite['rationale']}")
+            
+            if st.button("📋 Salin ke Dokumen Utama"):
+                st.session_state.document_text = res_rewrite["suggested"]
+                st.success("Teks telah disalin ke tab Editor Utama!")
+        else:
+            st.caption("Pilih mode gaya dan klik 'Tulis Ulang Teks' untuk melihat saran perbaikan.")
+
+# ==============================================================================
+# TAB 3: Academic AI Copilot (12 Skills)
+# ==============================================================================
+with tab_copilot:
+    st.subheader("🤖 Academic AI Copilot")
+    st.caption("Asisten riset dan penulisan berbasis 12 keahlian akademik spesifik.")
+    
+    skill_options = {
+        "grammar_spell": "1. Grammar & Spell Checker (Tata Bahasa & Ejaan Baku)",
+        "clarity_conciseness": "2. Clarity & Conciseness (Lugas, Ringkas & Padat)",
+        "sentence_rewriter": "3. Sentence Rewriter (Restrukturisasi Sintaksis)",
+        "academic_tone": "4. Academic Tone (Formalitas & Nada Objektif)",
+        "paraphrase": "5. Paraphrase (Parafrase Preservasi Sitasi)",
+        "academic_chat": "6. Academic Chat & Consultation (Konsultasi Riset)",
+        "summarize": "7. Executive Summary (Ringkasan IMRaD)",
+        "bilingual_translate": "8. Bilingual Translate (Penerjemahan Istilah Ilmiah)",
+        "document_qa": "9. Document Q&A (Evaluasi Kritis & Reviewer Naskah)",
+        "citation_verify": "10. Citation Verification (Verifikasi Validitas Sitasi)",
+        "research_gap": "11. Research Gap & Novelty (Identifikasi Kebaruan Riset)",
+        "journal_formatter": "12. Journal Formatter (Audit Struktur Template Jurnal)"
+    }
+    
+    col_skill_select, col_skill_lang = st.columns([2, 1])
+    with col_skill_select:
+        selected_skill = st.selectbox(
+            "Pilih Keahlian Asisten:",
+            options=list(skill_options.keys()),
+            format_func=lambda x: skill_options[x]
+        )
+    with col_skill_lang:
+        copilot_lang = st.selectbox(
+            "Bahasa Target Asisten:",
+            options=["id-ID", "en-US"],
+            format_func=lambda x: "Bahasa Indonesia" if x == "id-ID" else "English (US)"
+        )
+        
+    copilot_context = st.text_input(
+        "Konteks / Instruksi Tambahan (Opsional):",
+        placeholder="Misal: 'Target jurnal terindeks Scopus Q1' atau 'Fokus pada metodologi penelitian kuantitatif'",
+    )
+    
+    copilot_text = st.text_area(
+        "Teks Masukan untuk Asisten:",
+        value=st.session_state.document_text[:1200] if st.session_state.document_text else "",
+        height=180
+    )
+    
+    if st.button("🚀 Eksekusi Asisten AI", type="primary"):
+        if not copilot_text.strip():
+            st.warning("Silakan masukkan teks terlebih dahulu.")
+        else:
+            with st.spinner("Menganalisis dengan Academic AI Copilot..."):
+                active_api_key = user_api_key if user_api_key else None
+                copilot_result = execute_academic_copilot(
+                    skill_id=selected_skill,
+                    text=copilot_text,
+                    context=copilot_context,
+                    target_language=copilot_lang,
+                    api_key=active_api_key
+                )
+                
+                st.markdown(f"**Penyedia Mesin:** `{copilot_result['provider']}` | **Model:** `{copilot_result['model_used']}`")
+                st.markdown("---")
+                st.markdown(copilot_result["output"])
+
+# ==============================================================================
+# TAB 4: Pencarian DOI & Referensi Resmi Crossref
+# ==============================================================================
+with tab_citations:
+    st.subheader("📚 Pencarian Referensi & Sitasi Resmi via Crossref")
+    st.caption("Pencarian metadata langsung ke database resmi Crossref tanpa pihak ketiga.")
+    
+    q_col1, q_col2 = st.columns([3, 1])
+    with q_col1:
+        search_query = st.text_input("Cari judul artikel, topik riset, atau nomor DOI:", value="Attention Is All You Need")
+    with q_col2:
+        search_rows = st.selectbox("Jumlah Hasil:", options=[3, 5, 10], index=1)
+        
+    if st.button("🔍 Cari Referensi Terverifikasi", type="primary"):
+        with st.spinner("Menghubungi Crossref API..."):
+            try:
+                results = search_crossref_dois(search_query, rows=search_rows)
+                if not results:
+                    st.info("Tidak ditemukan referensi yang cocok dengan kata kunci tersebut.")
+                else:
+                    st.success(f"Ditemukan {len(results)} artikel terverifikasi:")
+                    for idx, item in enumerate(results):
+                        with st.container():
+                            st.markdown(f"### {idx+1}. {item['title']}")
+                            st.caption(f"**Penulis:** {', '.join(item['authors'])} ({item['year'] or 'n.d.'}) | **Jurnal:** *{item['journal'] or 'Publikasi Ilmiah'}*")
+                            if item["doi"]:
+                                st.markdown(f"**DOI:** [`{item['doi']}`]({item['url']})")
+                            
+                            c_apa, c_ieee = st.columns(2)
+                            with c_apa:
+                                st.markdown("**Sitasi Format APA 7:**")
+                                st.code(item["apa"], language="text")
+                            with c_ieee:
+                                st.markdown("**Sitasi Format IEEE:**")
+                                st.code(item["ieee"], language="text")
+                            st.divider()
+            except Exception as e:
+                st.error(f"Gagal menghubungi server Crossref: {e}")
+
+# ==============================================================================
+# TAB 5: Korpus Ilmiah Terindeks & Custom Corpus
+# ==============================================================================
+with tab_corpus:
+    st.subheader("🏛️ Korpus Ilmiah Terbuka Berizin")
+    st.caption("Karya ilmiah berlisensi Creative Commons dan Public Domain yang dijadikan dasar perbandingan kemiripan teks.")
+    
+    # Table of standard corpus
+    st.dataframe(
+        [
+            {
+                "Judul Artikel": art["title"],
+                "Penulis & Tahun": f"{art['authors']} ({art.get('year', 'n.d.')})",
+                "Lisensi": art.get("license", "Open Access"),
+                "Tautan Resmi": art.get("url", "#")
+            }
+            for art in OPEN_ACCESS_CORPUS
+        ],
+        use_container_width=True
+    )
+    
+    with st.expander("📖 Lihat Kutipan Teks Korpus Terindeks"):
+        for art in OPEN_ACCESS_CORPUS:
+            st.markdown(f"**{art['title']}** — *{art['authors']}*")
+            st.text(art["text"])
+            st.markdown("---")
+
+    st.markdown("### ➕ Tambahkan Dokumen Pembanding Sendiri (Sesi Ini)")
+    st.caption("Tambahkan artikel rujukan atau skripsi Anda sendiri untuk diikutsertakan dalam penghitungan kemiripan.")
+    
+    new_doc_title = st.text_input("Judul Dokumen Baru:", placeholder="Contoh: Skripsi Bab 1-3 Referensi")
+    new_doc_authors = st.text_input("Penulis / Sumber:", placeholder="Contoh: Ahmad et al. (2024)")
+    new_doc_text = st.text_area("Isi Teks Dokumen Pembanding:", height=150)
+    
+    if st.button("➕ Daftarkan Dokumen ke Korpus Sesi"):
+        if new_doc_title.strip() and new_doc_text.strip():
+            st.session_state.custom_corpus.append({
+                "id": f"custom_{len(st.session_state.custom_corpus)+1}",
+                "title": new_doc_title,
+                "authors": new_doc_authors or "Dokumen Pengguna",
+                "year": "2026",
+                "license": "Dokumen Lokal Pengguna",
+                "url": "#",
+                "text": new_doc_text
+            })
+            st.success(f"Dokumen '{new_doc_title}' berhasil ditambahkan! Total dokumen tambahan: {len(st.session_state.custom_corpus)}")
+        else:
+            st.warning("Harap isi judul dan teks dokumen.")
+            
+    if st.session_state.custom_corpus:
+        st.markdown(f"**Dokumen Tambahan Anda ({len(st.session_state.custom_corpus)}):**")
+        for doc in st.session_state.custom_corpus:
+            st.write(f"- 📄 **{doc['title']}** ({doc['authors']})")
