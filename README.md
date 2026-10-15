@@ -1,4 +1,10 @@
+<div align="center">
+
+<img src="public/brand/logo_3d_material3.jpg" alt="AcademicWrite AI 3D Logo Material 3" width="240" style="border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.12); margin-bottom: 12px;" />
+
 # Academic Writing Intelligence Platform (`ai-detector`)
+
+**Workstation Cerdas, Berorientasi Privasi, dan Bebas Halusinasi untuk Peneliti, Dosen, dan Mahasiswa**
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ai-detector-best.streamlit.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -7,10 +13,10 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Material Design 3](https://img.shields.io/badge/Design-Material_You_M3-4285F4?logo=google&logoColor=white)](https://m3.material.io/)
 
-Sebuah workstation cerdas dan berorientasi privasi (*privacy-first*) untuk penulisan akademik yang menggabungkan pemeriksaan tata bahasa bilingual (PUEBI/KBBI & English), deteksi kemiripan teks deterministik (5-gram Jaccard) terhadap korpus ilmiah terbuka terverifikasi, parafrase akademik dual-mode, pencarian literatur Crossref resmi, dan **12 Keahlian Academic AI Copilot** yang dievaluasi dengan framework **RAGAS**.
-
 🌐 **Aplikasi Live di Cloud:** [https://ai-detector-best.streamlit.app/](https://ai-detector-best.streamlit.app/)  
 📦 **Repositori GitHub:** [`indri007/ai-detector`](https://github.com/indri007/ai-detector)
+
+</div>
 
 ---
 
