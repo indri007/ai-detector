@@ -39,3 +39,10 @@ yarn-error.log*
 # Cloned External Reference Repositories
 references/
 
+# Python & Streamlit secrets
+.streamlit/secrets.toml
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
