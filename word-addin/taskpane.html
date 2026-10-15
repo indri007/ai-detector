@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AcademicWrite AI Task Pane</title>
+  <!-- Office.js library -->
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="stylesheet" href="taskpane.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <span class="brand-title">AcademicWrite AI</span>
+        <span class="badge">Word Add-in</span>
+      </div>
+      <div class="lang-selector">
+        <select id="langSelect">
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+          <option value="id-ID">Bahasa Indonesia</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Privacy Consent Notice -->
+    <div class="consent-notice">
+      🔒 <strong>Privasi Aman:</strong> Teks hanya dianalisis secara lokal setelah Anda mengklik tombol di bawah. Naskah tidak pernah disimpan permanen atau dibagikan.
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="tab-grammar">Grammar</button>
+      <button class="tab-btn" data-tab="tab-rewrite">Rewrite</button>
+      <button class="tab-btn" data-tab="tab-citations">Sitasi & DOI</button>
+      <button class="tab-btn" data-tab="tab-similarity">Kemiripan</button>
+    </nav>
+
+    <!-- Selected Text Buffer Area -->
+    <section class="selection-panel">
+      <div class="panel-header">
+        <label>Teks Terpilih di Dokumen:</label>
+        <button id="btnReadSelection" class="btn-secondary" title="Ambil teks yang sedang diblok di Word">
+          📥 Ambil Teks
+        </button>
+      </div>
+      <textarea id="selectedTextPreview" placeholder="Pilih/blok kalimat di Word, lalu klik 'Ambil Teks'..." readonly></textarea>
+      <div class="char-count" id="charCountDisplay">0 kata | 0 karakter</div>
+    </section>
+
+    <!-- TAB 1: GRAMMAR -->
+    <div id="tab-grammar" class="tab-content active">
+      <button id="btnCheckGrammar" class="btn-primary">🔍 Periksa Tata Bahasa & Ejaan</button>
+      <div id="grammarResultsList" class="results-list">
+        <div class="empty-state">Pilih kalimat dan klik periksa untuk melihat saran.</div>
+      </div>
+    </div>
+
+    <!-- TAB 2: REWRITE / STYLE -->
+    <div id="tab-rewrite" class="tab-content">
+      <div class="rewrite-controls">
+        <label>Gaya Penulisan:</label>
+        <select id="rewriteModeSelect">
+          <option value="academic_formal">Formal Akademik</option>
+          <option value="concise">Ringkas & Padat</option>
+          <option value="clarity">Peningkatan Kejelasan</option>
+        </select>
+        <button id="btnRunRewrite" class="btn-primary mt-2">✨ Parafrase Kalimat</button>
+      </div>
+      <div id="rewriteResultArea" class="rewrite-card hidden">
+        <div class="card-header">Saran Penulisan:</div>
+        <p id="rewriteTextOutput" class="rewrite-output"></p>
+        <p id="rewriteRationaleOutput" class="rewrite-rationale"></p>
+        <button id="btnApplyRewriteToWord" class="btn-success">📝 Ganti Teks di Word</button>
+      </div>
+    </div>
+
+    <!-- TAB 3: CITATIONS & DOI -->
+    <div id="tab-citations" class="tab-content">
+      <div class="search-box">
+        <input type="text" id="citationSearchInput" placeholder="Cari judul paper atau DOI (Crossref)..." />
+        <button id="btnSearchCitations" class="btn-secondary">Cari</button>
+      </div>
+      <div id="citationResultsList" class="results-list">
+        <div class="empty-state">Ketik kata kunci untuk mencari referensi akademik resmi.</div>
+      </div>
+    </div>
+
+    <!-- TAB 4: SIMILARITY -->
+    <div id="tab-similarity" class="tab-content">
+      <button id="btnCheckSimilarity" class="btn-primary">📊 Uji Kemiripan Korpus Terbuka</button>
+      <div id="similarityResultArea" class="results-list">
+        <div class="empty-state">Uji kecocokan teks terhadap korpus ilmiah terbuka terindeks.</div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <footer class="app-footer">
+      <span id="statusIndicator">Siap</span>
+    </footer>
+  </div>
+
+  <script src="taskpane.js"></script>
+</body>
+</html>

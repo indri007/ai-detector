@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp 
+          xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" 
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+          xsi:type="TaskPaneApp">
+  <Id>d3b07384-d113-4911-a832-6a971203a111</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>AcademicWrite AI</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="AcademicWrite AI Assistant" />
+  <Description DefaultValue="Academic grammar checking, style rewrites, citations, and transparent similarity analysis for Microsoft Word." />
+  <IconUrl DefaultValue="https://localhost:3001/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://localhost:3001/assets/icon-64.png" />
+  <SupportUrl DefaultValue="http://localhost:8000" />
+  
+  <AppDomains>
+    <AppDomain>http://localhost:8000</AppDomain>
+    <AppDomain>http://127.0.0.1:8000</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Document" />
+  </Hosts>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://localhost:3001/taskpane.html" />
+  </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
+</OfficeApp>
