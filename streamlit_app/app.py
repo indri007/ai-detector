@@ -74,41 +74,48 @@ with tab_editor:
                         grammar_data = data.get("grammar", {})
                         sim_data = data.get("similarity", {})
                         findings = grammar_data.get("findings", [])
-                        
-                        # Score Summary
-                        col_g, col_s = st.columns(2)
-                        with col_g:
-                            st.metric("Temuan Tata Bahasa", len(findings))
-                        with col_s:
-                            sim_pct = sim_data.get("overall_percent", 0.0)
-                            st.metric("Kemiripan Korpus", f"{sim_pct}%")
-                        
-                        # Grammar Findings
-                        st.markdown("#### ✍️ Saran Tata Bahasa & Ejaan")
-                        if not findings:
-                            st.success("Tidak ditemukan kesalahan tata bahasa atau ejaan.")
-                        else:
-                            for f in findings:
-                                with st.expander(f"⚠️ {f['original_text']} → {f.get('replacement_text', 'Periksa')}"):
-                                    st.write(f"**Pesan:** {f['message']}")
-                                    if f.get("explanation"):
-                                        st.caption(f['explanation'])
-                        
-                        # Similarity Report
-                        st.markdown("#### 📊 Kemiripan Naskah Terhadap Korpus")
-                        st.caption(sim_data.get("disclaimer", ""))
-                        sources = sim_data.get("matched_sources", [])
-                        if not sources:
-                            st.info("Tidak ditemukan kecocokan signifikan pada korpus terbuka.")
-                        else:
-                            for src in sources:
-                                st.markdown(f"**[{src['match_percent']}%]** [{src['title']}]({src['url']}) — *{src['authors']}*")
-                                for p in src.get("matched_passages", []):
-                                    st.code(p, language="text")
                     else:
-                        st.error(f"Backend error HTTP {res.status_code}")
-                except Exception as e:
-                    st.warning(f"FastAPI backend belum aktif di localhost:8000 ({e}).")
+                        raise ValueError(f"HTTP {res.status_code}")
+                except Exception:
+                    # In-repo Standalone Fallback for Streamlit Cloud
+                    import sys
+                    import os
+                    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    from backend.nlp_engine import analyze_grammar_rules, calculate_similarity_shingles
+
+                    findings = analyze_grammar_rules(user_text, language)
+                    sim_data = calculate_similarity_shingles(user_text)
+
+                # Score Summary
+                col_g, col_s = st.columns(2)
+                with col_g:
+                    st.metric("Temuan Tata Bahasa", len(findings))
+                with col_s:
+                    sim_pct = sim_data.get("overall_percent", 0.0)
+                    st.metric("Kemiripan Korpus", f"{sim_pct}%")
+                
+                # Grammar Findings
+                st.markdown("#### ✍️ Saran Tata Bahasa & Ejaan")
+                if not findings:
+                    st.success("Tidak ditemukan kesalahan tata bahasa atau ejaan.")
+                else:
+                    for f in findings:
+                        with st.expander(f"⚠️ {f['original_text']} → {f.get('replacement_text', 'Periksa')}"):
+                            st.write(f"**Pesan:** {f['message']}")
+                            if f.get("explanation"):
+                                st.caption(f['explanation'])
+                
+                # Similarity Report
+                st.markdown("#### 📊 Kemiripan Naskah Terhadap Korpus")
+                st.caption(sim_data.get("disclaimer", ""))
+                sources = sim_data.get("matched_sources", [])
+                if not sources:
+                    st.info("Tidak ditemukan kecocokan signifikan pada korpus terbuka.")
+                else:
+                    for src in sources:
+                        st.markdown(f"**[{src['match_percent']}%]** [{src['title']}]({src['url']}) — *{src['authors']}*")
+                        for p in src.get("matched_passages", []):
+                            st.code(p, language="text")
 
 # TAB 2: DOI & Citation Search
 with tab_citations:
@@ -116,21 +123,44 @@ with tab_citations:
     q = st.text_input("Cari judul artikel, topik, atau DOI:", value="Attention Is All You Need")
     if st.button("Cari Referensi"):
         with st.spinner("Mencari metadata di Crossref..."):
+            items = []
             try:
-                res = requests.get(f"{API_BASE}/api/v1/citations/search?q={q}", timeout=5)
+                res = requests.get(f"{API_BASE}/api/v1/citations/search?q={q}", timeout=4)
                 if res.status_code == 200:
                     items = res.json().get("results", [])
-                    st.write(f"Ditemukan {len(items)} referensi terverifikasi:")
-                    for item in items:
-                        with st.container():
-                            st.markdown(f"**{item['title']}**")
-                            st.caption(f"Penulis: {', '.join(item['authors'])} ({item['year'] or 'n.d.'}) | DOI: `{item['doi']}`")
-                            st.markdown(f"[Buka Tautan Jurnal ↗]({item['url']})")
-                            st.divider()
                 else:
-                    st.error("Gagal mengambil data dari Crossref.")
-            except Exception as e:
-                st.error(f"Gagal menghubungkan ke backend: {e}")
+                    raise ValueError()
+            except Exception:
+                # Direct Crossref search fallback for Streamlit Cloud
+                import urllib.request
+                import urllib.parse
+                url = f"https://api.crossref.org/works?query={urllib.parse.quote(q)}&rows=5"
+                req = urllib.request.Request(url, headers={"User-Agent": "VeritasAcademic/1.0 (mailto:dev@academicwrite.local)"})
+                try:
+                    with urllib.request.urlopen(req, timeout=6) as response:
+                        d = json.loads(response.read().decode())
+                        for it in d.get("message", {}).get("items", []):
+                            authors = [f"{a.get('given','')} {a.get('family','')}".strip() for a in it.get("author", [])]
+                            items.append({
+                                "title": (it.get("title") or ["Judul Tidak Ditemukan"])[0],
+                                "doi": it.get("DOI", ""),
+                                "authors": authors[:3],
+                                "year": it.get("published", {}).get("date-parts", [[None]])[0][0],
+                                "url": it.get("URL", f"https://doi.org/{it.get('DOI','')}")
+                            })
+                except Exception as ex:
+                    st.error(f"Gagal mencari di Crossref: {ex}")
+
+            if items:
+                st.write(f"Ditemukan {len(items)} referensi terverifikasi:")
+                for item in items:
+                    with st.container():
+                        st.markdown(f"**{item['title']}**")
+                        st.caption(f"Penulis: {', '.join(item['authors'])} ({item['year'] or 'n.d.'}) | DOI: `{item['doi']}`")
+                        st.markdown(f"[Buka Tautan Jurnal ↗]({item['url']})")
+                        st.divider()
+            elif not items:
+                st.info("Tidak ada referensi yang cocok dengan kata kunci tersebut.")
 
 # TAB 3: Indexed Corpus
 with tab_corpus:
